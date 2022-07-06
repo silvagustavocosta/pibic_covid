@@ -1,5 +1,7 @@
 from cmath import nan
+from re import X
 import string
+from tracemalloc import start
 from turtle import clear
 import numpy as np
 import csv
@@ -12,7 +14,7 @@ from os.path import isfile, join
 from os.path import exists
 import matplotlib
 import matplotlib.pyplot as plt
-from datetime import datetime
+import datetime
 from statsmodels.tsa.seasonal import seasonal_decompose
 
 
@@ -35,6 +37,53 @@ def hr_outliers(df):  # retira outliers da base de dados de hr. Outliers são hr
     return(df)
 
 
+def qmin(df):
+    """
+        calcula a qualidade de cada amostra de 1 minuto de acordo com a quantidade de dados coletados naquele minuto
+    """
+    df = df.reset_index()
+    df = df.rename(columns={'index': 'datetime'})
+
+    first_date = df['datetime'][0]
+    start_date = first_date.to_pydatetime()
+    delta = datetime.timedelta(minutes=1)
+    start_date = start_date.replace(second=0)
+    inter_date = start_date + delta
+
+    data = []
+    qmin = []
+
+    count = 0
+    for linha in df.itertuples():
+        if linha.datetime >= start_date and linha.datetime < inter_date:
+            count = count + 1
+        else:
+            data.append(start_date)
+            qmin.append(count)
+            start_date = start_date + delta
+            inter_date = inter_date + delta
+            count = 1
+
+    dict = {"datetime": data, "qmin": qmin}
+    minq = pd.DataFrame(dict)
+
+    minq = minq.set_index("datetime")
+    return minq
+
+
+def organize_dataframe(df):
+    """
+        Essa função vai organizar o dataframe. Seta o index como o "datetime". Colocar os valores de tempo para pandas datetime:
+        Usada no resting_heart_rate() e no qmin()
+    """
+
+    df = df.set_index("datetime")
+    df.index.name = None
+    df.index = pd.to_datetime(df.index)
+
+    return df
+
+
 def resting_heart_rate(df_hr, df_steps, controle):
     """
         This function uses heart rate and steps data to infer restign heart rate.
@@ -44,16 +93,15 @@ def resting_heart_rate(df_hr, df_steps, controle):
     controle['Merge_time'] = resample_time
 
     # heartrate data:
-    df_hr = df_hr.set_index("datetime")
-    df_hr.index.name = None
-    df_hr.index = pd.to_datetime(df_hr.index)
+    df_hr = organize_dataframe(df_hr)
+
+    # carregar os dados do hr data como constituintes da média das amostras por minuto, calcula a qualidade das amostras
+    df_hr = df_hr.resample(resample_time).mean()
 
     # steps data:
-    df_steps = df_steps.set_index("datetime")
-    df_steps.index.name = None
-    df_steps.index = pd.to_datetime(df_steps.index)
+    df_steps = organize_dataframe(df_steps)
 
-    # merge dataframes, deixa os dados mais uniformes quando ocorre um resample desses:
+    # merge dataframes de heartrate e passos, deixa os dados mais uniformes quando ocorre um resample desses:
     df1 = pd.merge(df_hr, df_steps, left_index=True, right_index=True)
     df1 = df1.resample(resample_time).mean()
     df1 = df1.dropna()
@@ -62,7 +110,42 @@ def resting_heart_rate(df_hr, df_steps, controle):
     window_step = 12
     df1['steps_window_12'] = df1['steps'].rolling(window_step).sum()
     df1 = df1.loc[(df1['steps_window_12'] == 0)]
+
     return(df1)
+
+
+def qmax(df):
+    """
+        Calcula a qualidade de cada amostra de uma hora de acordo com a qualidade das amostras de um minuto que constituem aquela hora
+    """
+    df = df.reset_index()
+    df = df.rename(columns={'index': 'datetime'})
+
+    first_date = df['datetime'][0]
+    start_date = first_date.to_pydatetime()
+    delta = datetime.timedelta(hours=1)
+    start_date = start_date.replace(minute=0)
+    inter_date = start_date + delta
+
+    data = []
+    qmax = []
+
+    count = 0
+    for linha in df.itertuples():
+        if linha.datetime >= start_date and linha.datetime < inter_date:
+            count = count + linha.qmin
+        else:
+            data.append(start_date)
+            qmax.append((count/660)*100)
+            start_date = start_date + delta
+            inter_date = inter_date + delta
+            count = 0
+
+    dict = {"datetime": data, "qmax": qmax}
+    maxq = pd.DataFrame(dict)
+    maxq = maxq.set_index("datetime")
+
+    return maxq
 
 
 def pre_processing(df_hr, controle):
@@ -70,8 +153,7 @@ def pre_processing(df_hr, controle):
         This function takes resting heart rate data and applies moving averages to smooth the data and
         downsamples to one hour by taking the avegare values
     """
-
-    avarage_sample = 400
+    avarage_sample = 3600
     controle["Smooth_data_sample"] = avarage_sample
 
     # smooth data:
@@ -83,21 +165,8 @@ def pre_processing(df_hr, controle):
 
     df1_resmp = df1_rom.resample(resample_time).mean()
     df2 = df1_resmp.drop(['steps'], axis=1)
-
-    # dropar todos os valores nulos até o primeiro valor numerico, não é necessário dropar os últimos
-    first_index = df2.first_valid_index()
-    for index in df2.index:
-        if index != first_index:
-            df2 = df2.drop(labels=index, axis=0)
-        elif index == first_index:
-            break
-
-    tamanho1 = len(df2)
-
     df2 = df2.dropna()
 
-    tamanho2 = len(df2)
-    controle["Controle"] = tamanho1 - tamanho2
     return df2
 
 
@@ -153,10 +222,13 @@ def plot_limitations(df, symptom_date, covid_date, recovery_date, base_rhr):
         Plota os gráficos dos dataframes. Plota com as limitações de linhas para definir os momentos
         de sintomas, covid e recuperação
     """
-    df = df.reset_index()  # reseta o indice para eu poder utilizar posteriormente para plotar os g
+    kind = 'scatter'
+
+    # reseta o indice para eu poder utilizar posteriormente para plotar os g
+    df = df.reset_index()
 
     # plota o gráfico do hr
-    ax = df.plot(kind='line', x='index', y='heartrate')
+    ax = df.plot(kind=kind, x='index', y='heartrate')
 
     plot_min = df['heartrate'].min()
     plot_max = df['heartrate'].max()
@@ -176,9 +248,12 @@ def plot(df):
     """
         Plota o gráfico do dataframe sem as limitações
     """
+    resultado = 2
+    tipo = 'scatter'
+
     df = df.reset_index()
-    header_name = df.columns.values[1]
-    ax = df.plot(kind='line', x='index', y=header_name)
+    header_name = df.columns.values[resultado]
+    ax = df.plot(kind=tipo, x='index', y=header_name,)
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.show()
 
@@ -187,6 +262,7 @@ def get_base_rhr(df, controle):
     """
         Pega o valor médio do batimento cardíaco, vai ser utilizado para plotar gráficos, o valor é dado com duas casas decimais
     """
+
     base_rhr = df['heartrate'].mean()
     base_rhr = round(base_rhr, 2)
     controle["Base_rhr"] = base_rhr
@@ -228,11 +304,11 @@ def seasonality_correction(df_rhr_processed, controle):
 
 
 # importar os dois arquivos
-participant = "A0NVTRV"
+participant = "AFPB8J2"
 hr_data = pd.read_csv(
-    "/home/gustavo/PibicData1/COVID-19-Wearables/A0NVTRV_hr.csv")
+    "/home/gustavo/PibicData1/COVID-19-Wearables/AFPB8J2_hr.csv")
 steps_data = pd.read_csv(
-    "/home/gustavo/PibicData1/COVID-19-Wearables/A0NVTRV_steps.csv")
+    "/home/gustavo/PibicData1/COVID-19-Wearables/AFPB8J2_steps.csv")
 
 # dicionário que vai armazenar todos os parâmetros (controle de qualidade da amostra) para utilizar depois:
 controle = {}
@@ -254,6 +330,10 @@ steps_data = steps_data.drop(columns=["user"])  # retira a coluna de user
 
 df_rhr = resting_heart_rate(hr_data, steps_data, controle)
 
+minq = qmin(organize_dataframe(hr_data))
+
+maxq = qmax(minq)
+
 df_rhr_processed = pre_processing(df_rhr, controle)
 
 size(df_rhr_processed, controle)
@@ -264,6 +344,15 @@ base_rhr = get_base_rhr(df_rhr_processed, controle)
 
 scRHR = seasonality_correction(df_rhr_processed, controle)
 
-plot_limitations(scRHR, symptom_date, covid_date, recovery_date, base_rhr)
+scRHR = scRHR.dropna()
 
-print(controle)
+# junta os dados de qualidade obtidos com os dados trabalhados das amostras
+scRHR_final = pd.merge(scRHR, maxq,
+                       left_index=True, right_index=True)
+print(scRHR_final)
+plot_limitations(scRHR_final, symptom_date,
+                 covid_date, recovery_date, base_rhr)
+
+plot(scRHR_final)
+
+# print(controle)
