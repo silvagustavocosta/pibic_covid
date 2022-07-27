@@ -4,6 +4,7 @@ import string
 from tracemalloc import start
 from turtle import clear
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 import csv
 import json
 import pandas as pd
@@ -95,7 +96,7 @@ def resting_heart_rate(df_hr, df_steps, controle):
     # heartrate data:
     df_hr = organize_dataframe(df_hr)
 
-    # carregar os dados do hr data como constituintes da média das amostras por minuto, calcula a qualidade das amostras
+    # carregar os dados do hr data como constituintes da média das amostras por minuto
     df_hr = df_hr.resample(resample_time).mean()
 
     # steps data:
@@ -136,7 +137,7 @@ def qmax(df):
             count = count + linha.qmin
         else:
             data.append(start_date)
-            qmax.append((count/660)*100)
+            qmax.append(count)
             start_date = start_date + delta
             inter_date = inter_date + delta
             count = 0
@@ -153,7 +154,7 @@ def pre_processing(df_hr, controle):
         This function takes resting heart rate data and applies moving averages to smooth the data and
         downsamples to one hour by taking the avegare values
     """
-    avarage_sample = 3600
+    avarage_sample = 400
     controle["Smooth_data_sample"] = avarage_sample
 
     # smooth data:
@@ -222,7 +223,7 @@ def plot_limitations(df, symptom_date, covid_date, recovery_date, base_rhr):
         Plota os gráficos dos dataframes. Plota com as limitações de linhas para definir os momentos
         de sintomas, covid e recuperação
     """
-    kind = 'scatter'
+    kind = 'line'
 
     # reseta o indice para eu poder utilizar posteriormente para plotar os g
     df = df.reset_index()
@@ -244,13 +245,10 @@ def plot_limitations(df, symptom_date, covid_date, recovery_date, base_rhr):
     plt.show()
 
 
-def plot(df):
+def plot(df, resultado, tipo):
     """
         Plota o gráfico do dataframe sem as limitações
     """
-    resultado = 2
-    tipo = 'scatter'
-
     df = df.reset_index()
     header_name = df.columns.values[resultado]
     ax = df.plot(kind=tipo, x='index', y=header_name,)
@@ -303,12 +301,62 @@ def seasonality_correction(df_rhr_processed, controle):
     return scRHR
 
 
+def vector_distribution(df, n):
+    """
+        Separa o df em dataframes menores que vão analiser pequenos intervalos desses vetores,
+        em média intervalos de 5 minutos, construir distribuição de probabilidades desses vetores
+    """
+
+    tamanho_df = len(df)
+    z = tamanho_df/n
+
+    list_df = np.array_split(df, z)
+
+    for key, value in enumerate(list_df):
+        plot(list_df[key], 1, "line")
+        probability_distribution(list_df[key])
+        if key > 10:
+            break
+
+
+def probability_distribution(df):
+    """
+        Plotar gráficos da função densidade de probabilidades. Histograma com essa distribuição
+        e a Kernel Density Estimate
+    """
+    # Kernel Density Estimate:
+    df['heartrate'].plot.kde(bw_method=None, color='darkorange')
+
+    # Histogram:
+    q25, q75 = np.percentile(df['heartrate'], [25, 75])
+    bin_width = 2 * (q75 - q25) * len(df['heartrate']) ** (-1/3)
+    # Freedman–Diaconis
+    bins = round((df['heartrate'].max() - df['heartrate'].min()) / bin_width)
+    plt.hist(df['heartrate'], density=True, color="darkturquoise", bins=bins)
+    plt.ylabel('Probability')
+    plt.xlabel('Resting Heart Rate')
+    plt.show()
+
+
+def standardization(df):
+    """
+        Standardize the data with zero meann and unit variance (Z-score).
+    """
+
+    data_scaled = StandardScaler().fit_transform(df.values)
+    data_scaled_features = pd.DataFrame(
+        data_scaled, index=df.index, columns=df.columns)
+    data_df = pd.DataFrame(data_scaled_features)
+    data = pd.DataFrame(data_df).fillna(0)
+    return data
+
+
 # importar os dois arquivos
-participant = "AFPB8J2"
+participant = "A0VFT1N"
 hr_data = pd.read_csv(
-    "/home/gustavo/PibicData1/COVID-19-Wearables/AFPB8J2_hr.csv")
+    "/home/gustavo/PibicData1/COVID-19-Wearables/A0VFT1N_hr.csv")
 steps_data = pd.read_csv(
-    "/home/gustavo/PibicData1/COVID-19-Wearables/AFPB8J2_steps.csv")
+    "/home/gustavo/PibicData1/COVID-19-Wearables/A0VFT1N_steps.csv")
 
 # dicionário que vai armazenar todos os parâmetros (controle de qualidade da amostra) para utilizar depois:
 controle = {}
@@ -346,13 +394,30 @@ scRHR = seasonality_correction(df_rhr_processed, controle)
 
 scRHR = scRHR.dropna()
 
-# junta os dados de qualidade obtidos com os dados trabalhados das amostras
-scRHR_final = pd.merge(scRHR, maxq,
-                       left_index=True, right_index=True)
-print(scRHR_final)
-plot_limitations(scRHR_final, symptom_date,
+scRHR += 0.1
+
+stdRHR = standardization(scRHR)
+
+hr_data_org = organize_dataframe(hr_data)
+# vector_distribution(hr_data_org, 60)
+# vector_distribution(df_rhr, 60)
+
+scRHR_1 = pd.merge(scRHR, maxq,
+                   left_index=True, right_index=True)
+
+scRHR_2 = pd.merge(stdRHR, maxq,
+                   left_index=True, right_index=True)
+
+plot_limitations(scRHR_1, symptom_date,
                  covid_date, recovery_date, base_rhr)
 
-plot(scRHR_final)
+probability_distribution(scRHR_1)
+
+# plot_limitations(scRHR_2, symptom_date,
+#                  covid_date, recovery_date, base_rhr)
+
+# probability_distribution(scRHR_2)
+
+# plot(scRHR_1, 2, "scatter")
 
 # print(controle)
