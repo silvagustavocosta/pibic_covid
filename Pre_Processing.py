@@ -5,10 +5,7 @@ from tracemalloc import start
 from turtle import clear
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-import csv
-import json
 import pandas as pd
-import glob
 import os
 from os import listdir, system
 from os.path import isfile, join
@@ -17,6 +14,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import datetime
 from statsmodels.tsa.seasonal import seasonal_decompose
+from matplotlib.pyplot import figure
 
 
 def control_basedata(hr_data, steps_data, controle):
@@ -27,8 +25,7 @@ def control_basedata(hr_data, steps_data, controle):
     controle["Raw_steps"] = len(steps_data)
 
 
-def hr_outliers(df):  # retira outliers da base de dados de hr. Outliers são hr < 30, hr > 200
-    # acha o indice dos outliers
+def hr_outliers(df):
     indice = (df.loc[df["heartrate"] > 200]).index
     for i in indice:
         df = df.drop(labels=i, axis=0)
@@ -149,18 +146,21 @@ def qmax(df):
     return maxq
 
 
-def pre_processing(df_hr, controle):
+def moving_avarage(df_hr, controle, avarage_sample):
     """
-        This function takes resting heart rate data and applies moving averages to smooth the data and
-        downsamples to one hour by taking the avegare values
+        This function takes resting heart rate data and applies moving averages to smooth the data
     """
-    avarage_sample = 400
     controle["Smooth_data_sample"] = avarage_sample
-
-    # smooth data:
     df_nonas = df_hr.dropna()
     df1_rom = df_nonas.rolling(avarage_sample).mean()
 
+    return df1_rom
+
+
+def pre_processing(df1_rom, controle):
+    """
+        This function downsamples to one hour by taking the avegare values from that hour
+    """
     resample_time = '1H'
     controle["Resample_time"] = resample_time
 
@@ -171,21 +171,10 @@ def pre_processing(df_hr, controle):
     return df2
 
 
-def size(df, controle):
-    """
-        Vai pegar a amostra já trabalhada e descobrir quantos dias de amostragem foram feitos, carregar
-        esse dado como um indicativo de qualidade para cada amostra
-    """
-
-    first_sample = df.first_valid_index()
-    last_sample = df.last_valid_index()
-    sample_time = last_sample - first_sample
-    controle["Sample_size_days"] = sample_time.days
-
-
 def arranje_sick_time(time_data):
     """
-        Segunda parte da função get_sick_time, iremos pegar a lista de intervalos de sintomas, doença e recuperação e transformar em uma lista com os horários bem separados
+        Segunda parte da função get_sick_time, iremos pegar a lista de intervalos de sintomas, 
+        doença e recuperação e transformar em uma lista com os horários bem separados
     """
 
     clean_data = []
@@ -218,30 +207,26 @@ def get_sick_time(df, participant):
     return(symptom_date, covid_date, recovery_date)
 
 
-def plot_limitations(df, symptom_date, covid_date, recovery_date, base_rhr):
-    """
-        Plota os gráficos dos dataframes. Plota com as limitações de linhas para definir os momentos
-        de sintomas, covid e recuperação
-    """
-    kind = 'line'
+def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date):
 
-    # reseta o indice para eu poder utilizar posteriormente para plotar os g
-    df = df.reset_index()
-
-    # plota o gráfico do hr
-    ax = df.plot(kind=kind, x='index', y='heartrate')
-
+    fig, ax = plt.subplots()
     plot_min = df['heartrate'].min()
     plot_max = df['heartrate'].max()
 
-    ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
-              label='symptom date')  # plota linha vertical do symptom_date
-    ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
-              label='covid_date')  # plota linha vertical do covid_date
-    ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
-              label='recovery_date')  # plota linha vertical do recovery_date
+    ax.plot(df.index, df[coluna], label='heartrate')
+    plt.gcf().set_size_inches(8, 6)
 
+    ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
+              label='symptom date')
+    ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
+              label='covid_date')
+    ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
+              label='recovery_date')
+
+    plt.gcf().autofmt_xdate()
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
+
+    plt.tight_layout()
     plt.show()
 
 
@@ -249,10 +234,26 @@ def plot(df, resultado, tipo):
     """
         Plota o gráfico do dataframe sem as limitações
     """
+
     df = df.reset_index()
     header_name = df.columns.values[resultado]
     ax = df.plot(kind=tipo, x='index', y=header_name,)
-    ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
+    plt.show()
+
+
+def plot_quality(df, coluna):
+    """
+        Plota um gráfico tipo scatter para mostrar a qualidade dos dados de amostra 
+    """
+
+    pl1 = plt.figure(figsize=(8, 6), dpi=80)
+    plt.scatter(df.index, df[coluna], c=df[coluna],
+                cmap='Blues')
+    cbar = plt.colorbar()
+    cbar.set_label('Qualidade')
+
+    plt.gcf().autofmt_xdate()
+    plt.tight_layout()
     plt.show()
 
 
@@ -269,20 +270,19 @@ def get_base_rhr(df, controle):
 
 def seasonal_vizualisation(trend, seasonal, resid):
     print("Trend:")
-    plot(trend)
+    plot(trend, 1, "line")
     print("Seasonal:")
-    plot(seasonal)
+    plot(seasonal, 1, "line")
     print("Residual:")
-    plot(resid)
+    plot(resid, 1, "line")
 
 
-def seasonality_correction(df_rhr_processed, controle):
+def seasonality_correction(df_rhr_processed, controle, period):
     """
-        Aplica os métodos de correção sazonal na base de dados 
+        Aplica os métodos de correção sazonal na base de dados
     """
 
     rhr = df_rhr_processed[['heartrate']]
-    period = 168
     controle['Sasonal_period'] = period
 
     rhr_decomposition = seasonal_decompose(
@@ -292,31 +292,14 @@ def seasonality_correction(df_rhr_processed, controle):
     rhr_seasonal = rhr_decomposition.seasonal
     rhr_resid = rhr_decomposition.resid
 
-    # seasonal_vizualisation(rhr_trend, rhr_seasonal, rhr_resid) #visualização da correção sazonal:
+    # visualização da correção sazonal:
+    # seasonal_vizualisation(rhr_trend, rhr_seasonal, rhr_resid)
 
     scRHR = pd.DataFrame(rhr_trend + rhr_resid)
     scRHR.rename(
         columns={scRHR.columns[0]: 'heartrate'}, inplace=True)
 
     return scRHR
-
-
-def vector_distribution(df, n):
-    """
-        Separa o df em dataframes menores que vão analiser pequenos intervalos desses vetores,
-        em média intervalos de 5 minutos, construir distribuição de probabilidades desses vetores
-    """
-
-    tamanho_df = len(df)
-    z = tamanho_df/n
-
-    list_df = np.array_split(df, z)
-
-    for key, value in enumerate(list_df):
-        plot(list_df[key], 1, "line")
-        probability_distribution(list_df[key])
-        if key > 10:
-            break
 
 
 def probability_distribution(df):
@@ -330,6 +313,9 @@ def probability_distribution(df):
     # Histogram:
     q25, q75 = np.percentile(df['heartrate'], [25, 75])
     bin_width = 2 * (q75 - q25) * len(df['heartrate']) ** (-1/3)
+    if bin_width == 0:
+        bin_width = 0.1
+
     # Freedman–Diaconis
     bins = round((df['heartrate'].max() - df['heartrate'].min()) / bin_width)
     plt.hist(df['heartrate'], density=True, color="darkturquoise", bins=bins)
@@ -351,73 +337,164 @@ def standardization(df):
     return data
 
 
-# importar os dois arquivos
-participant = "A0VFT1N"
-hr_data = pd.read_csv(
-    "/home/gustavo/PibicData1/COVID-19-Wearables/A0VFT1N_hr.csv")
-steps_data = pd.read_csv(
-    "/home/gustavo/PibicData1/COVID-19-Wearables/A0VFT1N_steps.csv")
+def saving_df(archive, dir_path, name):
+    """
+        Salva um arquivo específico no local definido para funcionar como
+    """
+    file_path = os.path.join(dir_path, name)
+    archive.to_csv(file_path)
 
-# dicionário que vai armazenar todos os parâmetros (controle de qualidade da amostra) para utilizar depois:
-controle = {}
 
-# importar arquivo das pessoas doentes
-df_sick = pd.read_csv("/home/gustavo/PibicData1/Sick_Values_01.txt")
+def seasonal_period(df, mode):
+    """
+        Encontra o melhor período da amostra para ser utilizado no seasonal_decompose(),
+        de acordo com o tipo, tamanho e tempo de amostragem
+        Modes = hour, minute
+    """
 
-# controle de dados, pegar Batimentos Cardíacos Iniciais e passos iniciais
-control_basedata(hr_data, steps_data, controle)
+    # TODO se o tamanho do dataset é menor que o dobro de 168 (para horas) e 10080 (para minutos)
+    # utilziar period calculado pela seguinte formula:
 
-# Pre-processing
-hr_data = hr_outliers(hr_data)
+    if mode == 'hour' and len(df) >= 336:
+        period = 168
+    elif mode == 'minute' and len(df) >= 20160:
+        period = 10080
+    else:
+        dfSize = len(df)
+        dfTime = (df.index[-1] - df.index[0])/np.timedelta64(1, 'W')
 
-hr_data = hr_data.drop_duplicates()  # remove the duplicates
-steps_data = steps_data.drop_duplicates()  # remove the duplicates
+        period = (dfSize/dfTime)
+        period = int(period)
 
-hr_data = hr_data.drop(columns=["user"])  # retira a coluna de user
-steps_data = steps_data.drop(columns=["user"])  # retira a coluna de user
+    return period
 
-df_rhr = resting_heart_rate(hr_data, steps_data, controle)
 
-minq = qmin(organize_dataframe(hr_data))
+def final_processing(hr_data, steps_data):
+    """
+        Makes all the processes of the data from one person, returning the 3 dataframes and the control dataset 
+    """
+    # dicionário que vai armazenar todos os parâmetros (controle de qualidade da amostra) para utilizar depois:
+    controle = {}
 
-maxq = qmax(minq)
+    # controle de dados, pegar Batimentos Cardíacos Iniciais e passos iniciais
+    control_basedata(hr_data, steps_data, controle)
 
-df_rhr_processed = pre_processing(df_rhr, controle)
+    # Pre-processing
+    hr_data = hr_outliers(hr_data)
 
-size(df_rhr_processed, controle)
+    hr_data = hr_data.drop_duplicates()  # remove the duplicates
+    steps_data = steps_data.drop_duplicates()  # remove the duplicates
 
-symptom_date, covid_date, recovery_date = get_sick_time(df_sick, participant)
+    hr_data = hr_data.drop(columns=["user"])  # retira a coluna de user
+    steps_data = steps_data.drop(columns=["user"])  # retira a coluna de user
 
-base_rhr = get_base_rhr(df_rhr_processed, controle)
+    df_rhr = resting_heart_rate(hr_data, steps_data, controle)
 
-scRHR = seasonality_correction(df_rhr_processed, controle)
+    minq = qmin(organize_dataframe(hr_data))
 
-scRHR = scRHR.dropna()
+    maxq = qmax(minq)
 
-scRHR += 0.1
+    # TODO forma melhor de escrever essa próxima parte do código
+    df_rhr_avarage = moving_avarage(df_rhr, controle, 400)
+    df_rhr_avarage1 = df_rhr_avarage.drop(['steps'], axis=1)
+    df_rhr_avarage2 = df_rhr_avarage1.dropna()
 
-stdRHR = standardization(scRHR)
+    df_rhr_processed = pre_processing(df_rhr_avarage, controle)
 
-hr_data_org = organize_dataframe(hr_data)
-# vector_distribution(hr_data_org, 60)
-# vector_distribution(df_rhr, 60)
+    base_rhr = get_base_rhr(df_rhr_processed, controle)
 
-scRHR_1 = pd.merge(scRHR, maxq,
-                   left_index=True, right_index=True)
+    period = seasonal_period(df_rhr_processed, 'hour')
+    scRHR = seasonality_correction(df_rhr_processed, controle, period)
 
-scRHR_2 = pd.merge(stdRHR, maxq,
-                   left_index=True, right_index=True)
+    period = seasonal_period(df_rhr_avarage2, 'minute')
+    minutes_rhr = seasonality_correction(
+        df_rhr_avarage2, controle, period)
+    minutes_rhr = minutes_rhr.dropna()
 
-plot_limitations(scRHR_1, symptom_date,
-                 covid_date, recovery_date, base_rhr)
+    scRHR = scRHR.dropna()
 
-probability_distribution(scRHR_1)
+    scRHR += 0.1
 
-# plot_limitations(scRHR_2, symptom_date,
-#                  covid_date, recovery_date, base_rhr)
+    stdRHR = standardization(scRHR)
 
-# probability_distribution(scRHR_2)
+    scRHR_1 = pd.merge(scRHR, maxq,
+                       left_index=True, right_index=True)
 
-# plot(scRHR_1, 2, "scatter")
+    stdRHR_1 = pd.merge(stdRHR, maxq,
+                        left_index=True, right_index=True)
 
-# print(controle)
+    return(scRHR_1, stdRHR_1, minutes_rhr, base_rhr, controle)
+
+
+def save_files(participant, scRHR, stdRHR, minutesRHR, base_rhr, symptom_date, covid_date, recovery_date):
+    """
+        Saves the dataframes and the images files on the directory, based on the name of the participant
+    """
+
+    base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+    dir_path = os.path.join(base_path, participant)
+    os.mkdir(dir_path)
+
+    saving_df(scRHR, dir_path, "scRHR")
+
+    saving_df(stdRHR, dir_path, "stdRHR")
+
+    saving_df(minutesRHR, dir_path, "minutesRHR")
+
+
+def main():
+    # for pessoa in set:
+    #     pre_processed(data)
+    #     save_data()
+
+    mode = "solo"
+    save_mode = "off"
+
+    Supplementary_Table = pd.read_csv(
+        "/home/gustavo/PibicData1/Sick_Values_01.txt")
+    if mode == "solo":
+        subjects = []
+        subjects.append("A0KX894")
+    elif mode == "full":
+        subjects = Supplementary_Table.ParticipantID.values.tolist()
+
+    df_sick = pd.read_csv("/home/gustavo/PibicData1/Sick_Values_01.txt")
+
+    for subject in subjects:
+        # importar os arquivos
+        participant = subject
+        print(participant)
+
+        hr_data = pd.read_csv(
+            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_hr.csv")
+        steps_data = pd.read_csv(
+            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_steps.csv")
+
+        symptom_date, covid_date, recovery_date = get_sick_time(
+            df_sick, participant)
+
+        scRHR, stdRHR, minutesRHR, base_rhr, controle = final_processing(
+            hr_data, steps_data)
+
+        if save_mode == "on":
+            save_files(participant, scRHR, stdRHR, minutesRHR,
+                       base_rhr, symptom_date, covid_date, recovery_date)
+        else:
+            continue
+
+    # ploting:
+    plot_limitations(scRHR, 'heartrate', symptom_date,
+                     covid_date, recovery_date)
+
+    plot_limitations(minutesRHR, 'heartrate', symptom_date,
+                     covid_date, recovery_date)
+
+    plot_quality(scRHR, 'qmax')
+
+    probability_distribution(scRHR)
+
+    print(controle)
+
+
+if __name__ == '__main__':
+    main()
