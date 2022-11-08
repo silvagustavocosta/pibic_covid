@@ -79,22 +79,70 @@ def get_date(symptom_date, covid_date, recovery_date):
     """
 
     if len(symptom_date) != 0:
-        symptom_date = datetime.datetime.strptime(
-            symptom_date[0], '%Y-%m-%d %H:%M:%S')
+        symptom = []
+        for date in symptom_date:
+            x = datetime.datetime.strptime(
+                date, '%Y-%m-%d %H:%M:%S')
+            symptom.append(x)
     else:
-        symptom_date = None
+        symptom = None
     if len(covid_date) != 0:
-        covid_date = datetime.datetime.strptime(
-            covid_date[0], '%Y-%m-%d %H:%M:%S')
+        covid = []
+        for date in covid_date:
+            x = datetime.datetime.strptime(
+                date, '%Y-%m-%d %H:%M:%S')
+            covid.append(x)
     else:
-        covid_date = None
+        covid = None
     if len(recovery_date) != 0:
-        recovery_date = datetime.datetime.strptime(
-            recovery_date[0], '%Y-%m-%d %H:%M:%S')
+        recovery = []
+        for date in recovery_date:
+            x = datetime.datetime.strptime(
+                date, '%Y-%m-%d %H:%M:%S')
+            recovery.append(x)
     else:
-        recovery_date = None
+        recovery = None
 
-    return(symptom_date, covid_date, recovery_date)
+    return(symptom, covid, recovery)
+
+
+def sort_datas(symptom_date, covid_date, recovery_date):
+    """
+        Constroi a partir dos valores das datas de sintomas, covid e recueperação uma lista de 
+        dicionários em ordem temporal. Os dicionários estão no formato data : situação do paciente
+    """
+
+    # criar a lista de dicionários de sintomas, covid e recuperação:
+    dateList = []
+    if type(symptom_date) is None:
+        dateList = []
+    else:
+        for data in symptom_date:
+            symptomDict = {}
+            symptomDict["date"] = data
+            symptomDict["status"] = 1
+            dateList.append(symptomDict)
+    if type(covid_date) is None:
+        dateList = []
+    else:
+        for data in covid_date:
+            symptomDict = {}
+            symptomDict["date"] = data
+            symptomDict["status"] = 2
+            dateList.append(symptomDict)
+    if type(recovery_date) is None:
+        dateList = []
+    else:
+        for data in recovery_date:
+            symptomDict = {}
+            symptomDict["date"] = data
+            symptomDict["status"] = 0
+            dateList.append(symptomDict)
+
+    # sort the list according to the date
+    dateList = sorted(dateList, key=lambda x: x['date'], reverse=False)
+
+    return(dateList)
 
 
 def sick_min(df_sick, vetores, participant):
@@ -109,6 +157,8 @@ def sick_min(df_sick, vetores, participant):
     symptom_date, covid_date, recovery_date = get_date(
         symptom_date, covid_date, recovery_date)
 
+    dateList = sort_datas(symptom_date, covid_date, recovery_date)
+
     # TODO Revisar esse for loop, nem sempre as datas estão separadas corretamente dessa forma
     # montar lista das datas
     # for data in lista_datas:
@@ -118,14 +168,21 @@ def sick_min(df_sick, vetores, participant):
     #         elif vetor.index[atual] > data.proxima:
     #             break
 
+    # TODO
     sick_id = []
-    for vetor in vetores:
-        if vetor.index[-1] >= symptom_date and vetor.index[-1] <= covid_date:
-            sick_id.append(1)
-        elif vetor.index[-1] >= covid_date and vetor.index[-1] <= recovery_date:
-            sick_id.append(2)
-        else:
-            sick_id.append(0)
+    for lDict in dateList:
+        for vetor in vetores:
+            if vetor.index[0] > lDict["date"] and vetor.index[0] <
+            sick_id.append(lDict["status"])
+
+    # sick_id = []
+    # for vetor in vetores:
+    #     if vetor.index[-1] >= symptom_date and vetor.index[-1] <= covid_date:
+    #         sick_id.append(1)
+    #     elif vetor.index[-1] >= covid_date and vetor.index[-1] <= recovery_date:
+    #         sick_id.append(2)
+    #     else:
+    #         sick_id.append(0)
 
     return sick_id
 
@@ -186,13 +243,13 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, title):
     plot_min = df['heartrate'].min()
     plot_max = df['heartrate'].max()
 
-    # ax.scatter(df.index, df['heartrate'], label='rhr',
-    #            marker='.', c=df['scores'], cmap='winter_r')
+    ax.scatter(df.index, df['heartrate'], label='rhr',
+               marker='.', c=df['scores'], cmap='winter_r')
 
-    ax.plot(df.index, df['heartrate'], label='RHR', zorder=0)
-    x = df.loc[df['anomaly'] == -1, 'heartrate']
+    # ax.plot(df.index, df['heartrate'], label='RHR', zorder=0)
+    # x = df.loc[df['anomaly'] == -1, 'heartrate']
 
-    ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
+    # ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
 
     plt.gcf().set_size_inches(8, 6)
 
