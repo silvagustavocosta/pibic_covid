@@ -114,26 +114,19 @@ def sort_datas(symptom_date, covid_date, recovery_date):
 
     # criar a lista de dicionários de sintomas, covid e recuperação:
     dateList = []
-    print(symptom_date)
-    if symptom_date is None:
-        dateList = []
-    else:
+    if symptom_date:
         for data in symptom_date:
             symptomDict = {}
             symptomDict["date"] = data
             symptomDict["status"] = 1
             dateList.append(symptomDict)
-    if covid_date is None:
-        dateList = []
-    else:
+    if covid_date:
         for data in covid_date:
             symptomDict = {}
             symptomDict["date"] = data
             symptomDict["status"] = 2
             dateList.append(symptomDict)
-    if recovery_date is None:
-        dateList = []
-    else:
+    if recovery_date:
         for data in recovery_date:
             symptomDict = {}
             symptomDict["date"] = data

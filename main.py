@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # reading pre_processed data:
-participant = "A0KX894"
+participant = "A4G0044"
 minutesRHR = pd.read_csv(
     "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/minutesRHR")
 scRHR = pd.read_csv(
