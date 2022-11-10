@@ -1,6 +1,7 @@
 from time import time
 import Pre_Processing
 import Anomaly_Detection
+import Test_Functions
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
@@ -34,24 +35,35 @@ time_min_vetores = [time_min_vetores[x] for x, _ in enumerate(
 
 time_min_vetores, qualidade = Anomaly_Detection.quality(time_min_vetores)
 
-# TODO
 sick_id = Anomaly_Detection.sick_min(df_sick, time_min_vetores, participant)
 
 time_min_inp = Anomaly_Detection.input_data(time_min_vetores, 60)
 
 time_min_org = Anomaly_Detection.organize_data(time_min_inp)
 
-time_min_org = Anomaly_Detection.isolation_forestMin(time_min_org)
+# Variando o fator de contaminação para testar os efeitos sobre o isolation forest:
+cont_para = Test_Functions.get_contamination(0.005, 0.15, 0.005)
+total_anomaly = []
+true_anomaly = []
 
-time_min_mean = time_min_org.copy()
-time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
+for contamination in cont_para:
+    time_min_org, n_anomaly = Anomaly_Detection.isolation_forestMin(
+        time_min_org, contamination)
+    total_anomaly.append(n_anomaly)
 
-time_min_mean['sick_ID'] = sick_id
+    time_min_mean = time_min_org.copy()
+    time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
 
-Anomaly_Detection.plot_anomaly(
-    time_min_mean, symptom_date, covid_date, recovery_date, "Vetores")
+    time_min_mean['sick_ID'] = sick_id
 
-print(time_min_mean)
+    # localiza o tamanho das respostas corretas de anomalia que o isolation forest achou
+    # com esses resultados temos n de anomalias, n de anomalias corretas, n de anomalias erradas
+    r_anwsers = time_min_mean.loc[(time_min_mean['anomaly'] == -1) & (
+        time_min_mean['sick_ID']=1)]
+
+
+# Anomaly_Detection.plot_anomaly(
+#     time_min_mean, symptom_date, covid_date, recovery_date, "Vetores")
 
 
 # plot visualization:

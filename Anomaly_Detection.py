@@ -175,8 +175,6 @@ def sick_min(df_sick, vetores, participant):
         for vetor in vetores:
             sick_id.append(0)
 
-    print(sick_id)
-
     return sick_id
 
 
@@ -236,13 +234,13 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, title):
     plot_min = df['heartrate'].min()
     plot_max = df['heartrate'].max()
 
-    ax.scatter(df.index, df['heartrate'], label='rhr',
-               marker='.', c=df['scores'], cmap='winter_r')
+    # ax.scatter(df.index, df['heartrate'], label='rhr',
+    #            marker='.', c=df['scores'], cmap='winter_r')
 
-    # ax.plot(df.index, df['heartrate'], label='RHR', zorder=0)
-    # x = df.loc[df['anomaly'] == -1, 'heartrate']
+    ax.plot(df.index, df['heartrate'], label='RHR', zorder=0)
 
-    # ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
+    x = df.loc[df['anomaly'] == -1, 'heartrate']
+    ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
 
     plt.gcf().set_size_inches(8, 6)
 
@@ -313,7 +311,7 @@ def organize_data(vetores):
     return df_vet
 
 
-def isolation_forestMin(df):
+def isolation_forestMin(df, contamination):
     """
         Aplica Isolation Forest no rhr do dataframe df (minutesRHR), adiciona
         coluna de anomalias no dataframe
@@ -324,11 +322,13 @@ def isolation_forestMin(df):
     df_expanded = pd.DataFrame(df['heartrate'].tolist())
 
     model = IsolationForest(n_estimators=100, max_samples='auto',
-                            contamination=float(0.11), max_features=1.0)
+                            contamination=float(contamination), max_features=1.0)
 
     model.fit(df_expanded)
 
     df['scores'] = model.decision_function(df_expanded)
     df['anomaly'] = model.predict(df_expanded)
 
-    return df
+    anomaly_count = len(df.loc[df['anomaly'] == -1])
+
+    return df, anomaly_count
