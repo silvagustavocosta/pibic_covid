@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # reading pre_processed data:
-participant = "AX6281V"
+participant = "A0KX894"
 minutesRHR = pd.read_csv(
     "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/minutesRHR")
 scRHR = pd.read_csv(
@@ -36,8 +36,6 @@ time_min_vetores, qualidade = Anomaly_Detection.quality(time_min_vetores)
 
 # TODO
 sick_id = Anomaly_Detection.sick_min(df_sick, time_min_vetores, participant)
-
-# ISOLATION FOREST time_min_vetores:
 
 time_min_inp = Anomaly_Detection.input_data(time_min_vetores, 60)
 

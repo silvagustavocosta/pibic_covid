@@ -114,7 +114,8 @@ def sort_datas(symptom_date, covid_date, recovery_date):
 
     # criar a lista de dicionários de sintomas, covid e recuperação:
     dateList = []
-    if type(symptom_date) is None:
+    print(symptom_date)
+    if symptom_date is None:
         dateList = []
     else:
         for data in symptom_date:
@@ -122,7 +123,7 @@ def sort_datas(symptom_date, covid_date, recovery_date):
             symptomDict["date"] = data
             symptomDict["status"] = 1
             dateList.append(symptomDict)
-    if type(covid_date) is None:
+    if covid_date is None:
         dateList = []
     else:
         for data in covid_date:
@@ -130,7 +131,7 @@ def sort_datas(symptom_date, covid_date, recovery_date):
             symptomDict["date"] = data
             symptomDict["status"] = 2
             dateList.append(symptomDict)
-    if type(recovery_date) is None:
+    if recovery_date is None:
         dateList = []
     else:
         for data in recovery_date:
@@ -159,30 +160,29 @@ def sick_min(df_sick, vetores, participant):
 
     dateList = sort_datas(symptom_date, covid_date, recovery_date)
 
-    # TODO Revisar esse for loop, nem sempre as datas estão separadas corretamente dessa forma
-    # montar lista das datas
-    # for data in lista_datas:
-    #     for vetor em vetores:
-    #         if vetor.index[0] > data:
-    #             vetor segue a característica dessa data
-    #         elif vetor.index[atual] > data.proxima:
-    #             break
-
-    # TODO
+    # sick_id vai carregar com 0, 1 e 2 se o vetor é de uma época saudável, com sintomas ou doente, os seguintes foor loops
+    # separam todos os vetores nessas categorias
     sick_id = []
-    for lDict in dateList:
+    if len(dateList) != 0:
         for vetor in vetores:
-            if vetor.index[0] > lDict["date"] and vetor.index[0] <
-            sick_id.append(lDict["status"])
+            if vetor.index[0] < dateList[0]["date"]:
+                sick_id.append(0)
+    if len(dateList) != 0:
+        for count, lDict in enumerate(dateList):
+            if count < (len(dateList)-1):
+                next_date = dateList[count + 1]["date"]
+                for vetor in vetores:
+                    if vetor.index[0] > lDict["date"] and vetor.index[0] < next_date:
+                        sick_id.append(lDict["status"])
+            else:
+                for vetor in vetores:
+                    if vetor.index[0] > lDict["date"]:
+                        sick_id.append(lDict["status"])
+    else:
+        for vetor in vetores:
+            sick_id.append(0)
 
-    # sick_id = []
-    # for vetor in vetores:
-    #     if vetor.index[-1] >= symptom_date and vetor.index[-1] <= covid_date:
-    #         sick_id.append(1)
-    #     elif vetor.index[-1] >= covid_date and vetor.index[-1] <= recovery_date:
-    #         sick_id.append(2)
-    #     else:
-    #         sick_id.append(0)
+    print(sick_id)
 
     return sick_id
 
