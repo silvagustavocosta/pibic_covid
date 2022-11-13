@@ -23,7 +23,7 @@ import datetime
 from statsmodels.tsa.seasonal import seasonal_decompose
 import Pre_Processing
 from sklearn.ensemble import IsolationForest
-
+import Anomaly_Detection
 
 def get_contamination(start, end, spacement):
     """ 
@@ -64,3 +64,36 @@ def simple_plot(x, y, title, xlabel, ylabel):
     plt.gcf().autofmt_xdate()
     plt.tight_layout()
     plt.show()
+
+def var_contamination(df, cont_para, sick_id):
+    """
+        Varia a contaminação conforme os parâmetros passados, faz as análises de isolation forest no código, 
+        retorna os valores de anomalias totais, corretas e a porcentagem dessas anomalias
+    """
+    total_anomaly = [] # carrega numa lista quantas anomlias totais certa contaminação traz 
+    true_anomaly = [] # carrega numa lsita quantas anomalias verdadeiras (em periodos de sintoma ou doença) certa contaminação traz
+    porc_anomaly = [] #carrega numa lista a porcentagem de anomalias corretas de certa contaminaçã
+
+    for contamination in cont_para:
+        df, n_anomaly = Anomaly_Detection.isolation_forestMin(
+            df, contamination)
+
+        time_min_mean = df.copy()
+        time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
+
+        time_min_mean['sick_ID'] = sick_id
+
+        # localiza o tamanho das respostas corretas de anomalia que o isolation forest achou
+        # com esses resultados temos n de anomalias, n de anomalias corretas, n de anomalias erradas
+    
+        nAno = time_min_mean.loc[(time_min_mean["anomaly"] == -1)]
+        nSic = time_min_mean.loc[(((time_min_mean["anomaly"] == -1) & (time_min_mean["sick_ID"] == 1)) | 
+            ((time_min_mean["anomaly"] == -1) & (time_min_mean["sick_ID"] == 2)))]
+        por = (len(nSic)/len(nAno))*100
+
+        total_anomaly.append(len(nAno))
+        true_anomaly.append(len(nSic))
+        porc_anomaly.append(round(por, 4))
+    
+    return total_anomaly, true_anomaly, porc_anomaly
+
