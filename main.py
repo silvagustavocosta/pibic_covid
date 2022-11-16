@@ -33,21 +33,21 @@ def isolation_analysis(participant, minutesRHR, scRHR, df_sick):
     time_min_org = Anomaly_Detection.organize_data(time_min_inp)
 
     # Variando o fator de contaminação para testar os efeitos sobre o isolation forest:
-    # cont_para = Test_Functions.get_contamination(0.005, 0.15, 0.005)
+    cont_para = Test_Functions.get_contamination(0.005, 0.15, 0.005)
 
-    # total_anomaly, true_anomaly, porc_anomaly = Test_Functions.var_contamination(time_min_org,
-    #     cont_para, sick_id)
+    total_anomaly, true_anomaly, porc_anomaly = Test_Functions.var_contamination(time_min_org,
+        cont_para, sick_id)
 
-    time_min_org, n_anomaly = Anomaly_Detection.isolation_forestMin(
-        time_min_org, 0.11)
+    #time_min_org, n_anomaly = Anomaly_Detection.isolation_forestMin(
+    #    time_min_org, 0.11)
 
-    time_min_mean = time_min_org.copy()
-    time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
+    #time_min_mean = time_min_org.copy()
+    #time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
 
-    time_min_mean['sick_ID'] = sick_id
+    #time_min_mean['sick_ID'] = sick_id
 
-    Anomaly_Detection.plot_anomaly(
-         time_min_mean, symptom_date, covid_date, recovery_date, "Vetores")
+    #Anomaly_Detection.plot_anomaly(
+    #     time_min_mean, symptom_date, covid_date, recovery_date, "Vetores")
 
     # plot visualization:
     # i = 70
@@ -98,9 +98,17 @@ def main():
         z.append(total_anomaly)
 
     fig, ax = plt.subplots()
+
     ax.plot(x, z[0], label = "AFPB8J2")
-    ax.plot(x, z[1], label = "A0NVTRV")
-    ax.plot(x, z[2], label = "A4G0044")
+    ax.plot(x, z[1], label = "APGIB2T")
+    ax.plot(x, z[2], label = "A0NVTRV")
+    ax.plot(x, z[3], label = "A4G0044")
+    ax.plot(x, z[4], label = "AS2MVDL")
+    ax.plot(x, z[5], label = "ASFODQR")
+    ax.plot(x, z[6], label = "AZIK4ZA")
+    ax.plot(x, z[7], label = "AYWIEKR")
+    ax.plot(x, z[8], label = "AJMQUVV")
+    
     plt.xlabel("Contaminação")
     plt.ylabel("Número Total de Anomalias")
     plt.gcf().set_size_inches(8, 6)
