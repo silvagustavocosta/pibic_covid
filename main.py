@@ -7,7 +7,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
-def isolation_analysis(participant, minutesRHR, scRHR, df_sick):
+
+def data_org(participant, minutesRHR, scRHR, df_sick):
+    """
+        Organiza os vetores minutesRHR e scRHR da forma necessária para aplicar o isolation
+        forest em cada um dos casos.
+        Separa minutesRHR em diferentes vetores transladados, inputa dados e retorna sua média
+    """
     symptom_date, covid_date, recovery_date = Pre_Processing.get_sick_time(
         df_sick, participant)
 
@@ -18,6 +24,8 @@ def isolation_analysis(participant, minutesRHR, scRHR, df_sick):
     scRHR = Pre_Processing.organize_dataframe(scRHR)
 
     # ISOLATION FOREST minutesRHR:
+    minutesRHR = data_input(minutesRHR)
+
     time_min_vetores = Anomaly_Detection.time_separation(minutesRHR)
 
     # apagar todos os vetores de time_min_vetores que estejam duplicados
@@ -26,30 +34,14 @@ def isolation_analysis(participant, minutesRHR, scRHR, df_sick):
 
     time_min_vetores, qualidade = Anomaly_Detection.quality(time_min_vetores)
 
-    sick_id = Anomaly_Detection.sick_min(df_sick, time_min_vetores, participant)
+    sick_id = Anomaly_Detection.sick_min(
+        df_sick, time_min_vetores, participant)
 
     time_min_inp = Anomaly_Detection.input_data(time_min_vetores, 60)
 
     time_min_org = Anomaly_Detection.organize_data(time_min_inp)
 
-    # Variando o fator de contaminação para testar os efeitos sobre o isolation forest:
-    cont_para = Test_Functions.get_contamination(0.005, 0.15, 0.005)
-
-    total_anomaly, true_anomaly, porc_anomaly = Test_Functions.var_contamination(time_min_org,
-        cont_para, sick_id)
-
-    #time_min_org, n_anomaly = Anomaly_Detection.isolation_forestMin(
-    #    time_min_org, 0.11)
-
-    #time_min_mean = time_min_org.copy()
-    #time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
-
-    #time_min_mean['sick_ID'] = sick_id
-
-    #Anomaly_Detection.plot_anomaly(
-    #     time_min_mean, symptom_date, covid_date, recovery_date, "Vetores")
-
-    # plot visualization:
+    # plot visualization vetores:
     # i = 70
     # while i < 80:
     #     Pre_Processing.plot(time_min_inp[i], 1, "scatter")
@@ -61,62 +53,115 @@ def isolation_analysis(participant, minutesRHR, scRHR, df_sick):
     # TODO:
     # scRHR = Anomaly_Detection.sick_hour(df_sick, scRHR, participant)
 
+    return time_min_org, scRHR, sick_id
+
+
+def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant):
+    """
+        Utiliza os dados trabalhados para realizar as análises do isolation forest tanto
+        para vetoresRHR e scRHR
+    """
+
+    symptom_date, covid_date, recovery_date = Pre_Processing.get_sick_time(
+        df_sick, participant)
+
+    # ISOLATION FOREST vetores:
+    vetoresRHR, n_anomaly = Anomaly_Detection.isolation_forestMin(
+        vetoresRHR, 0.11)
+
+    time_min_mean = vetoresRHR.copy()
+    time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
+
+    time_min_mean['sick_ID'] = sick_id
+
+    Anomaly_Detection.plot_anomaly(
+        time_min_mean, symptom_date, covid_date, recovery_date, "Vetores")
+
+    # ISOLATION FOREST scRHR:
     # scRHR = Anomaly_Detection.isolation_forestHOUR(scRHR)
 
     # Anomaly_Detection.plot_anomaly(
     #     scRHR, symptom_date, covid_date, recovery_date, "RHR Hora")
 
+
+def cont_var(vetoresRHR, sick_id):
+    """
+        Variando a contaminação de 0 até certo valor para observar como a variação desse parâmetro afeta o 
+        resultado esperado pelo isolation forest
+    """
+
+    # Variando o fator de contaminação para testar os efeitos sobre o isolation forest:
+    cont_para = Test_Functions.get_contamination(0.005, 0.15, 0.005)
+    total_anomaly, true_anomaly, porc_anomaly = Test_Functions.var_contamination(vetoresRHR,
+                                                                                 cont_para, sick_id)
+
     return total_anomaly, true_anomaly, porc_anomaly, cont_para
+
+
+def data_input():
+    """
+    """
+
 
 def main():
     # reading pre_processed data:
-    mode = "full"
+    mode = "solo"
 
     Supplementary_Table = pd.read_csv(
-        "/mnt/c/Users/silva/Downloads/COVID-19-Wearables/Sick_Values_01.csv")
+        "/home/gustavo/PibicData1/Sick_Values_01.txt")
     if mode == "solo":
         subjects = []
-        subjects.append("ALKAXMZ")
+        subjects.append("A0NVTRV")
     elif mode == "full":
         #subjects = Supplementary_Table.ParticipantID.values.tolist()
-        subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044", 
-            "AS2MVDL", "ASFODQR", "AZIK4ZA", "AYWIEKR", "AJMQUVV"]
+        subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044",
+                    "AS2MVDL", "ASFODQR", "AZIK4ZA", "AYWIEKR", "AJMQUVV"]
 
     y = []
     z = []
     for participant in subjects:
         minutesRHR = pd.read_csv(
-            "/mnt/c/Users/silva/Downloads/COVID-19-Wearables/Data/" + participant + "/minutesRHR")
+            "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/minutesRHR")
         scRHR = pd.read_csv(
-            "/mnt/c/Users/silva/Downloads/COVID-19-Wearables/Data/" + participant + "/scRHR")
+            "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/scRHR")
 
         # getting timestamps from when the subject is sick:
-        df_sick = pd.read_csv("/mnt/c/Users/silva/Downloads/COVID-19-Wearables/Sick_Values_01.csv")
+        df_sick = pd.read_csv(
+            "/home/gustavo/PibicData1/Sick_Values_01.txt")
 
-        total_anomaly, true_anomaly, porc_anomaly, x = isolation_analysis(participant, minutesRHR, scRHR, df_sick)
-        y.append(porc_anomaly)
-        z.append(total_anomaly)
+        vetoresRHR, scRHR, sick_id = data_org(
+            participant, minutesRHR, scRHR, df_sick)
 
-    fig, ax = plt.subplots()
+        # Variação da contaminação:
+        # total_anomaly, true_anomaly, porc_anomaly, cont_para = cont_var(
+        #     vetoresRHR, sick_id)
+        # y.append(porc_anomaly)
+        # z.append(total_anomaly)
 
-    ax.plot(x, z[0], label = "AFPB8J2")
-    ax.plot(x, z[1], label = "APGIB2T")
-    ax.plot(x, z[2], label = "A0NVTRV")
-    ax.plot(x, z[3], label = "A4G0044")
-    ax.plot(x, z[4], label = "AS2MVDL")
-    ax.plot(x, z[5], label = "ASFODQR")
-    ax.plot(x, z[6], label = "AZIK4ZA")
-    ax.plot(x, z[7], label = "AYWIEKR")
-    ax.plot(x, z[8], label = "AJMQUVV")
-    
-    plt.xlabel("Contaminação")
-    plt.ylabel("Número Total de Anomalias")
-    plt.gcf().set_size_inches(8, 6)
-    plt.title("Variação da Contaminação")
-    plt.gcf().autofmt_xdate()
-    plt.tight_layout()
-    plt.legend()
-    plt.show()
+        isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant)
+
+    # Variação da contaminação (plots):
+    # fig, ax = plt.subplots()
+
+    # ax.plot(cont_para, z[0], label="AFPB8J2")
+    # ax.plot(cont_para, z[1], label="APGIB2T")
+    # ax.plot(cont_para, z[2], label="A0NVTRV")
+    # ax.plot(cont_para, z[3], label="A4G0044")
+    # ax.plot(cont_para, z[4], label="AS2MVDL")
+    # ax.plot(cont_para, z[5], label="ASFODQR")
+    # ax.plot(cont_para, z[6], label="AZIK4ZA")
+    # ax.plot(cont_para, z[7], label="AYWIEKR")
+    # ax.plot(cont_para, z[8], label="AJMQUVV")
+
+    # plt.xlabel("Contaminação")
+    # plt.ylabel("Número Total de Anomalias")
+    # plt.gcf().set_size_inches(8, 6)
+    # plt.title("Variação da Contaminação")
+    # plt.gcf().autofmt_xdate()
+    # plt.tight_layout()
+    # plt.legend()
+    # plt.show()
+
 
 if __name__ == '__main__':
     main()

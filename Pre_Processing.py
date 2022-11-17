@@ -213,7 +213,7 @@ def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date):
     plot_min = df['heartrate'].min()
     plot_max = df['heartrate'].max()
 
-    ax.plot(df.index, df[coluna], label='heartrate')
+    ax.plot(df.index, df[coluna], label='heartrate', marker='.')
     plt.gcf().set_size_inches(8, 6)
 
     ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
@@ -431,7 +431,7 @@ def save_files(participant, scRHR, stdRHR, minutesRHR, base_rhr, symptom_date, c
         Saves the dataframes and the images files on the directory, based on the name of the participant
     """
 
-    base_path = "/mnt/c/Users/silva/Downloads/COVID-19-Wearables/Data"
+    base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
     dir_path = os.path.join(base_path, participant)
     os.mkdir(dir_path)
 
@@ -447,18 +447,18 @@ def main():
     #     pre_processed(data)
     #     save_data()
 
-    mode = "full"
-    save_mode = "on"
+    mode = "solo"
+    save_mode = "off"
 
     Supplementary_Table = pd.read_csv(
-        "/mnt/c/Users/silva/Downloads/COVID-19-Wearables/Sick_Values_01.csv")
+        "/home/gustavo/PibicData1/Sick_Values_01.txt")
     if mode == "solo":
         subjects = []
-        subjects.append("AFPB8J2")
+        subjects.append("A0NVTRV")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
 
-    df_sick = pd.read_csv("/mnt/c/Users/silva/Downloads/COVID-19-Wearables/Sick_Values_01.csv")
+    df_sick = pd.read_csv("/home/gustavo/PibicData1/Sick_Values_01.txt")
 
     for subject in subjects:
         # importar os arquivos
@@ -466,9 +466,9 @@ def main():
         print(participant)
 
         hr_data = pd.read_csv(
-            "/mnt/c/Users/silva/Downloads/COVID-19-Wearables/COVID-19-Wearables/" + participant + "_hr.csv")
+            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_hr.csv")
         steps_data = pd.read_csv(
-            "/mnt/c/Users/silva/Downloads/COVID-19-Wearables/COVID-19-Wearables/" + participant + "_steps.csv")
+            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_steps.csv")
 
         symptom_date, covid_date, recovery_date = get_sick_time(
             df_sick, participant)

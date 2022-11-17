@@ -59,7 +59,7 @@ def time_separation(df):
 def quality(vetores):
     """
         Conta quantas amostras cada vetor possui, apaga vetores com menos de 
-        40 amostras
+        45 amostras
     """
     qualidade = []
 
@@ -263,7 +263,7 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, title):
 def input_data(time_min_vetores, df_size):
     """
         Encontra missing values nos indíces dos vetores, adiciona índices que faltam 
-        utilizando index. Interpolação
+        utilizando index. Interpolação dos valores que os índices representam.
     """
 
     minute = datetime.timedelta(minutes=1)
