@@ -213,7 +213,7 @@ def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date):
     plot_min = df['heartrate'].min()
     plot_max = df['heartrate'].max()
 
-    ax.plot(df.index, df[coluna], label='heartrate', marker='.')
+    ax.scatter(df.index, df[coluna], label='heartrate', marker='.')
     plt.gcf().set_size_inches(8, 6)
 
     ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
@@ -454,7 +454,7 @@ def main():
         "/home/gustavo/PibicData1/Sick_Values_01.txt")
     if mode == "solo":
         subjects = []
-        subjects.append("A0NVTRV")
+        subjects.append("A0VFT1N")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
 

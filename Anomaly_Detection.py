@@ -106,14 +106,20 @@ def get_date(symptom_date, covid_date, recovery_date):
     return(symptom, covid, recovery)
 
 
-def sort_datas(symptom_date, covid_date, recovery_date):
+def sort_datas(symptom_date, covid_date, recovery_date, pre_symptom_date):
     """
         Constroi a partir dos valores das datas de sintomas, covid e recueperação uma lista de 
         dicionários em ordem temporal. Os dicionários estão no formato data : situação do paciente
     """
 
-    # criar a lista de dicionários de sintomas, covid e recuperação:
+    # criar a lista de dicionários de sintomas, covid, recuperação e datas pré-sintomáticas:
     dateList = []
+    if pre_symptom_date:
+        for data in pre_symptom_date:
+            symptomDict = {}
+            symptomDict["date"] = data
+            symptomDict["status"] = 3
+            dateList.append(symptomDict)
     if symptom_date:
         for data in symptom_date:
             symptomDict = {}
@@ -139,6 +145,28 @@ def sort_datas(symptom_date, covid_date, recovery_date):
     return(dateList)
 
 
+def covid_period(dateList):
+    """
+        Caso período entre doença e recuperação da pessoar for muito curto (menor que 5 dias), adicionamos mais
+        7 dias na análise para termos resultados mais favoráveis
+    """
+
+    for count, data in enumerate(dateList):
+        if count == 0:
+            continue
+        else:
+            if data["status"] == 2 and dateList[count-1]["status"] == 1:
+                if data["date"] - dateList[count-1]["date"] < datetime.timedelta(days=5):
+                    # adicionamos mais sete dias no péríodo de doença
+                    data["date"] = data["date"] + datetime.timedelta(days=5)
+                    dateList[count+1]["date"] = dateList[count +
+                                                         1]["date"] + datetime.timedelta(days=5)
+                else:
+                    continue
+
+    return(dateList)
+
+
 def sick_min(df_sick, vetores, participant):
     """
         Relacionar os vetores com os períodos onde o participant está saudável (0), 
@@ -151,10 +179,18 @@ def sick_min(df_sick, vetores, participant):
     symptom_date, covid_date, recovery_date = get_date(
         symptom_date, covid_date, recovery_date)
 
-    dateList = sort_datas(symptom_date, covid_date, recovery_date)
+    # Período pré-sintomático: 14 dias antes do início das anomalias
+    pre_symptom_date = []
+    pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=0))
 
-    # sick_id vai carregar com 0, 1 e 2 se o vetor é de uma época saudável, com sintomas ou doente, os seguintes foor loops
-    # separam todos os vetores nessas categorias
+    dateList = sort_datas(symptom_date, covid_date,
+                          recovery_date, pre_symptom_date)
+
+    # se o período entre doença e recuperação da pessoa for menor que 7 dias, adicionar mais 7 dias para esse período
+    # dateList = covid_period(dateList)
+
+    # sick_id vai carregar com 0, 1 e 2 se o vetor é de uma época saudável, com sintomas ou doente
+    # os seguintes foor loops separam todos os vetores nessas categorias
     sick_id = []
     if len(dateList) != 0:
         for vetor in vetores:
@@ -175,7 +211,7 @@ def sick_min(df_sick, vetores, participant):
         for vetor in vetores:
             sick_id.append(0)
 
-    return sick_id
+    return sick_id, dateList
 
 
 def sick_hour(df_sick, scRHR, participant):
@@ -225,7 +261,7 @@ def isolation_forestHOUR(df):
     return df
 
 
-def plot_anomaly(df, symptom_date, covid_date, recovery_date, title):
+def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, title):
     """
         Traça os gráficos do rhr levando em consideração os tempos de doenças e 
     """
@@ -250,6 +286,8 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, title):
               label='covid_date')
     ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
               label='recovery_date')
+    ax.vlines(x=pre_symptom_date, ymin=plot_min, ymax=plot_max, color='m',
+              label='pre_symptom date')
 
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.title(title)
