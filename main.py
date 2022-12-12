@@ -9,6 +9,44 @@ import numpy as np
 import datetime
 
 
+def input(df):
+    """
+        Inputa no dataframe um valor sempre que possuir um index vazio de minuto. Todos os minutos do dataframe
+        serão preenchidos com valores interpolados ou calculados a partir de outras funções. Sets de dados que 
+        possuem muitas lacunas não devem ser trabalhadas
+    """
+
+    # minutesRHR_inp = df
+
+    # detectar arquivos que podem ou não ser inputados:
+    # inputa os dados no arquivo:
+    minutesRHR_inp, totalLen, dfLen, lengths_consecutive_na = Anomaly_Detection.number_of_inputs(
+        df)
+    dataPorc = (dfLen/totalLen)*100
+
+    # TODO
+    # Teste de qualidade utilizando lengths_consecutive_na
+
+    # print(len(minutesRHR_inp))
+
+    # zoom no dataframe
+    # minutesRHR_inp = Anomaly_Detection.zoomdf(
+    #     minutesRHR_inp, "2025-03-01 00:00:00", "2025-03-15 00:00:00")
+
+    # ploting
+    # fig, ax = plt.subplots()
+    # ax.scatter(minutesRHR_inp.index,
+    #            minutesRHR_inp["heartrate"], label="RHR Inputed", marker=".", s=1)
+    # plt.gcf().set_size_inches(12, 10)
+    # plt.title("RHR Após Inputar Missing Values")
+    # plt.gcf().autofmt_xdate()
+    # plt.tight_layout()
+    # plt.legend()
+    # plt.show()
+
+    return minutesRHR_inp
+
+
 def data_org(participant, minutesRHR, scRHR, df_sick):
     """
         Organiza os vetores minutesRHR e scRHR da forma necessária para aplicar o isolation
@@ -22,7 +60,9 @@ def data_org(participant, minutesRHR, scRHR, df_sick):
     minutesRHR = Pre_Processing.organize_dataframe(minutesRHR)
     scRHR = Pre_Processing.organize_dataframe(scRHR)
 
-    time_min_vetores = Anomaly_Detection.time_separation(minutesRHR)
+    minutesRHR_inp = input(minutesRHR)
+
+    time_min_vetores = Anomaly_Detection.time_separation(minutesRHR_inp)
 
     # apagar todos os vetores de time_min_vetores que estejam duplicados
     time_min_vetores = [time_min_vetores[x] for x, _ in enumerate(
@@ -109,7 +149,7 @@ def main():
         "/home/gustavo/PibicData1/Sick_Values_01.txt")
     if mode == "solo":
         subjects = []
-        subjects.append("APGIB2T")
+        subjects.append("AS2MVDL")
     elif mode == "full":
         # subjects = Supplementary_Table.ParticipantID.values.tolist()
         subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044",
@@ -118,6 +158,8 @@ def main():
     y = []
     z = []
     for participant in subjects:
+        print(participant)
+
         minutesRHR = pd.read_csv(
             "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/minutesRHR")
         scRHR = pd.read_csv(
@@ -131,34 +173,50 @@ def main():
             participant, minutesRHR, scRHR, df_sick)
 
         # Variação da contaminação:
-        total_anomaly, true_anomaly, porc_anomaly, cont_para = cont_var(
-            vetoresRHR, sick_id)
-        y.append(porc_anomaly)
-        z.append(total_anomaly)
+        # total_anomaly, true_anomaly, porc_anomaly, cont_para = cont_var(
+        #     vetoresRHR, sick_id)
+        # y.append(porc_anomaly)
+        # z.append(total_anomaly)
 
-        # isolation_analysis(vetoresRHR, scRHR, sick_id,
-        #                    df_sick, participant, dateList)
+        isolation_analysis(vetoresRHR, scRHR, sick_id,
+                           df_sick, participant, dateList)
 
     # Variação da contaminação (plots):
-    fig, ax = plt.subplots()
+    # fig, ax = plt.subplots()
+    # ax.plot(cont_para, y[0], label="AFPB8J2")
+    # ax.plot(cont_para, y[1], label="APGIB2T")
+    # ax.plot(cont_para, y[2], label="A0NVTRV")
+    # ax.plot(cont_para, y[3], label="A4G0044")
+    # ax.plot(cont_para, y[4], label="AS2MVDL")
+    # ax.plot(cont_para, y[5], label="ASFODQR")
+    # ax.plot(cont_para, y[6], label="AYWIEKR")
+    # ax.plot(cont_para, y[7], label="AJMQUVV")
+    # plt.xlabel("Contaminação")
+    # plt.ylabel("Porcentagem de Anomalias")
+    # plt.gcf().set_size_inches(8, 6)
+    # plt.title("Variação da Contaminação")
+    # plt.gcf().autofmt_xdate()
+    # plt.tight_layout()
+    # plt.legend()
+    # plt.show()
 
-    ax.plot(cont_para, z[0], label="AFPB8J2")
-    ax.plot(cont_para, z[1], label="APGIB2T")
-    ax.plot(cont_para, z[2], label="A0NVTRV")
-    ax.plot(cont_para, z[3], label="A4G0044")
-    ax.plot(cont_para, z[4], label="AS2MVDL")
-    ax.plot(cont_para, z[5], label="ASFODQR")
-    ax.plot(cont_para, z[6], label="AYWIEKR")
-    ax.plot(cont_para, z[7], label="AJMQUVV")
-
-    plt.xlabel("Contaminação")
-    plt.ylabel("Número Total de Anomalias")
-    plt.gcf().set_size_inches(8, 6)
-    plt.title("Variação da Contaminação")
-    plt.gcf().autofmt_xdate()
-    plt.tight_layout()
-    plt.legend()
-    plt.show()
+    # fig, bx = plt.subplots()
+    # bx.plot(cont_para, z[0], label="AFPB8J2")
+    # bx.plot(cont_para, z[1], label="APGIB2T")
+    # bx.plot(cont_para, z[2], label="A0NVTRV")
+    # bx.plot(cont_para, z[3], label="A4G0044")
+    # bx.plot(cont_para, z[4], label="AS2MVDL")
+    # bx.plot(cont_para, z[5], label="ASFODQR")
+    # bx.plot(cont_para, z[6], label="AYWIEKR")
+    # bx.plot(cont_para, z[7], label="AJMQUVV")
+    # plt.xlabel("Contaminação")
+    # plt.ylabel("Número Total de Anomalias")
+    # plt.gcf().set_size_inches(8, 6)
+    # plt.title("Variação da Contaminação")
+    # plt.gcf().autofmt_xdate()
+    # plt.tight_layout()
+    # plt.legend()
+    # plt.show()
 
 
 if __name__ == '__main__':

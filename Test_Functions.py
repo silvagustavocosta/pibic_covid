@@ -27,8 +27,8 @@ import Anomaly_Detection
 
 
 def get_contamination(start, end, spacement):
-    """ 
-        Cria lista que começa em float(start) e termina em float(end) com 
+    """
+        Cria lista que começa em float(start) e termina em float(end) com
         espaçamento de cada valor de float(spacement)
     """
 
@@ -69,7 +69,7 @@ def simple_plot(x, y, title, xlabel, ylabel):
 
 def var_contamination(df, cont_para, sick_id):
     """
-        Varia a contaminação conforme os parâmetros passados, faz as análises de isolation forest no código, 
+        Varia a contaminação conforme os parâmetros passados, faz as análises de isolation forest no código,
         retorna os valores de anomalias totais, corretas e a porcentagem dessas anomalias
     """
     total_anomaly = []  # carrega numa lista quantas anomlias totais certa contaminação traz
@@ -100,76 +100,3 @@ def var_contamination(df, cont_para, sick_id):
         porc_anomaly.append(round(por, 4))
 
     return total_anomaly, true_anomaly, porc_anomaly
-
-
-def df_stepDivision(df, symptom_date):
-    """
-        Separa o dataframe de steps somente em 21 dias antes do inicio dos sintomas e 7 dias após
-        o início dos sintomas
-    """
-
-    df['datetime'] = pd.to_datetime(df['datetime'])
-    df = df.set_index(['datetime'])
-
-    if len(symptom_date) != 0:
-        symptomLimits = {}
-        limitsList = []
-        for data in symptom_date:
-            init = data - datetime.timedelta(days=21)
-            end = data + datetime.timedelta(days=7)
-            symptomLimits["init"] = init
-            symptomLimits["end"] = end
-            limitsList.append(symptomLimits)
-
-        for limits in limitsList:
-            df = df.loc[limits["init"]:limits["end"]]
-
-    return df
-
-# TODO
-
-
-def stepPor(df):
-    """
-        Remove individuals with more than 50% of steps or sleep (each individually) data missing in a window of 21 d before symptom onset and 7 d after.
-    """
-
-    del df['user']
-    resample_time = "1Min"
-    df = df.resample(resample_time).mean()
-
-    print(df)
-
-
-# Remove individuals with more than 50% of steps or sleep (each individually) data missing in a window of 21 d before symptom onset and 7 d after:
-mode = "solo"
-
-Supplementary_Table = pd.read_csv(
-    "/home/gustavo/PibicData1/Sick_Values_01.txt")
-if mode == "solo":
-    subjects = []
-    subjects.append("AF3J1YC")
-elif mode == "full":
-    subjects = Supplementary_Table.ParticipantID.values.tolist()
-
-df_sick = pd.read_csv("/home/gustavo/PibicData1/Sick_Values_01.txt")
-
-for subject in subjects:
-    participant = subject
-    print(participant)
-
-    # importar os arquivos
-    hr_data = pd.read_csv(
-        "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_hr.csv")
-    steps_data = pd.read_csv(
-        "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_steps.csv")
-
-    symptom_date, covid_date, recovery_date = Pre_Processing.get_sick_time(
-        df_sick, participant)
-
-    symptom_date, covid_date, recovery_date = Anomaly_Detection.get_date(
-        symptom_date, covid_date, recovery_date)
-
-    df_steps = df_stepDivision(steps_data, symptom_date)
-
-    step_percentage = stepPor(df_steps)

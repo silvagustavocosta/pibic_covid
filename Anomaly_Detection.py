@@ -157,8 +157,8 @@ def covid_period(dateList):
         else:
             if data["status"] == 2 and dateList[count-1]["status"] == 1:
                 if data["date"] - dateList[count-1]["date"] < datetime.timedelta(days=5):
-                    # adicionamos mais sete dias no péríodo de doença
-                    data["date"] = data["date"] + datetime.timedelta(days=5)
+                    # adicionamos mais 5 dias no péríodo de doença
+                    data["date"] = data["date"] + datetime.timedelta(days=1)
                     dateList[count+1]["date"] = dateList[count +
                                                          1]["date"] + datetime.timedelta(days=5)
                 else:
@@ -181,13 +181,13 @@ def sick_min(df_sick, vetores, participant):
 
     # Período pré-sintomático: 14 dias antes do início das anomalias
     pre_symptom_date = []
-    pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=0))
+    pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=14))
 
     dateList = sort_datas(symptom_date, covid_date,
                           recovery_date, pre_symptom_date)
 
     # se o período entre doença e recuperação da pessoa for menor que 7 dias, adicionar mais 7 dias para esse período
-    # dateList = covid_period(dateList)
+    dateList = covid_period(dateList)
 
     # sick_id vai carregar com 0, 1 e 2 se o vetor é de uma época saudável, com sintomas ou doente
     # os seguintes foor loops separam todos os vetores nessas categorias
@@ -316,9 +316,8 @@ def input_data(time_min_vetores, df_size):
             new_index.append(first_index)
             first_index = first_index + minute
 
-        # mean = vetor.mean()
         vetor = vetor.reindex(new_index)
-        # vetor = vetor.fillna(value=mean)
+
         vetor = vetor.interpolate(method='linear')
         time_min_inp.append(vetor)
 
@@ -370,3 +369,58 @@ def isolation_forestMin(df, contamination):
     anomaly_count = len(df.loc[df['anomaly'] == -1])
 
     return df, anomaly_count
+
+
+def number_of_inputs(df):
+    """
+        Carrega quantos dados vão ser inputados para que o dataframe fique completo, inputa os dados no dataframe
+    """
+
+    firstIndex = df.index[0]
+    lastIndex = df.index[-1]
+
+    dates = pd.date_range(firstIndex, lastIndex, freq="1min")
+    totalLen = len(dates)
+    dfLen = len(df)
+
+    df = df.reindex(dates)
+
+    longest_na_gaps, lengths_consecutive_na = can_be_inputed(df)
+
+    # Last Carried Observation
+    # df = df.fillna(method="ffill")
+
+    # Inputing Base Data
+    # df = df.fillna(60)
+
+    # Interpolating data
+    df = df.interpolate(method="linear")
+
+    return df, totalLen, dfLen, lengths_consecutive_na
+
+
+def zoomdf(df, dateInit, dateEnd):
+    """
+        Diminui o tamanho de um dataframe para conseguir plotar em uma imagem maior só o intervalo desejado
+        entre a dateInit e a dateEnd
+    """
+
+    df = df[dateInit:dateEnd]
+    return df
+
+
+def can_be_inputed(df):
+    """
+        Detecta arquivos que podemos inputar dados e arquivos que não é viável inputar dados
+    """
+
+    na_groups = df["heartrate"].notna().cumsum()[df["heartrate"].isna()]
+    lengths_consecutive_na = na_groups.groupby(na_groups).agg(len)
+    longest_na_gap = lengths_consecutive_na.max()
+
+    lengths_consecutive_na = lengths_consecutive_na.sort_values(
+        ascending=False)
+
+    # print(lengths_consecutive_na)
+
+    return longest_na_gap, lengths_consecutive_na
