@@ -207,14 +207,15 @@ def get_sick_time(df, participant):
     return(symptom_date, covid_date, recovery_date)
 
 
-def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date):
+def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date, title):
 
     fig, ax = plt.subplots()
     plot_min = df['heartrate'].min()
     plot_max = df['heartrate'].max()
 
-    ax.scatter(df.index, df[coluna], label='heartrate', marker='.')
-    plt.gcf().set_size_inches(8, 6)
+    ax.plot(df.index, df[coluna], label='heartrate', marker='.')
+
+    plt.gcf().set_size_inches(12, 10)
 
     ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
               label='symptom date')
@@ -223,9 +224,9 @@ def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date):
     ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
               label='recovery_date')
 
+    plt.title(title)
     plt.gcf().autofmt_xdate()
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
-
     plt.tight_layout()
     plt.show()
 
@@ -241,17 +242,21 @@ def plot(df, resultado, tipo):
     plt.show()
 
 
-def plot_quality(df, coluna):
+def plot_quality(df, coluna, title):
     """
         Plota um gráfico tipo scatter para mostrar a qualidade dos dados de amostra 
     """
 
-    pl1 = plt.figure(figsize=(8, 6), dpi=80)
+    fig, ax = plt.subplots()
+
     plt.scatter(df.index, df[coluna], c=df[coluna],
                 cmap='Blues')
+    plt.gcf().set_size_inches(12, 10)
+
     cbar = plt.colorbar()
     cbar.set_label('Qualidade')
 
+    plt.title(title)
     plt.gcf().autofmt_xdate()
     plt.tight_layout()
     plt.show()
@@ -454,7 +459,7 @@ def main():
         "/home/gustavo/PibicData1/Sick_Values_01.txt")
     if mode == "solo":
         subjects = []
-        subjects.append("A0VFT1N")
+        subjects.append("A0KX894")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
 
@@ -484,14 +489,14 @@ def main():
 
     # ploting:
     plot_limitations(scRHR, 'heartrate', symptom_date,
-                     covid_date, recovery_date)
+                     covid_date, recovery_date, "scRHR")
 
     plot_limitations(minutesRHR, 'heartrate', symptom_date,
-                     covid_date, recovery_date)
+                     covid_date, recovery_date, "minutesRHR")
 
-    plot_quality(scRHR, 'qmax')
+    plot_quality(scRHR, 'qmax', "Número de Amostras por Hora dos Dados")
 
-    probability_distribution(scRHR)
+    # probability_distribution(scRHR)
 
     print(controle)
 

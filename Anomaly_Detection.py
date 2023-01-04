@@ -150,7 +150,8 @@ def covid_period(dateList):
         Caso período entre doença e recuperação da pessoar for muito curto (menor que 5 dias), adicionamos mais
         7 dias na análise para termos resultados mais favoráveis
     """
-
+    # TODO
+    print(dateList)
     for count, data in enumerate(dateList):
         if count == 0:
             continue
@@ -180,14 +181,17 @@ def sick_min(df_sick, vetores, participant):
         symptom_date, covid_date, recovery_date)
 
     # Período pré-sintomático: 14 dias antes do início das anomalias
-    pre_symptom_date = []
-    pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=14))
+    if symptom_date:
+        pre_symptom_date = []
+        pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=14))
+    else:
+        pre_symptom_date = None
 
     dateList = sort_datas(symptom_date, covid_date,
                           recovery_date, pre_symptom_date)
 
     # se o período entre doença e recuperação da pessoa for menor que 7 dias, adicionar mais 7 dias para esse período
-    dateList = covid_period(dateList)
+    # dateList = covid_period(dateList)
 
     # sick_id vai carregar com 0, 1 e 2 se o vetor é de uma época saudável, com sintomas ou doente
     # os seguintes foor loops separam todos os vetores nessas categorias
@@ -201,11 +205,11 @@ def sick_min(df_sick, vetores, participant):
             if count < (len(dateList)-1):
                 next_date = dateList[count + 1]["date"]
                 for vetor in vetores:
-                    if vetor.index[0] > lDict["date"] and vetor.index[0] < next_date:
+                    if vetor.index[0] >= lDict["date"] and vetor.index[0] < next_date:
                         sick_id.append(lDict["status"])
             else:
                 for vetor in vetores:
-                    if vetor.index[0] > lDict["date"]:
+                    if vetor.index[0] >= lDict["date"]:
                         sick_id.append(lDict["status"])
     else:
         for vetor in vetores:
@@ -226,22 +230,42 @@ def sick_hour(df_sick, scRHR, participant):
     symptom_date, covid_date, recovery_date = get_date(
         symptom_date, covid_date, recovery_date)
 
-    symptomI = scRHR.index.get_loc(symptom_date, method='nearest')
-    covidI = scRHR.index.get_loc(covid_date, method='nearest')
-    recoveryI = scRHR.index.get_loc(recovery_date, method='nearest')
+    # Período pré-sintomático: 14 dias antes do início das anomalias
+    if symptom_date:
+        pre_symptom_date = []
+        pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=14))
+    else:
+        pre_symptom_date = None
 
-    scRHR = scRHR.reset_index()
-    scRHR = scRHR.rename(columns={'index': 'datetime'})
+    dateList = sort_datas(symptom_date, covid_date,
+                          recovery_date, pre_symptom_date)
 
-    scRHR.loc[:symptomI, 'sickID'] = 0
-    scRHR.loc[symptomI:covidI, 'sickID'] = 1
-    scRHR.loc[covidI:recoveryI, 'sickID'] = 2
-    scRHR.loc[recoveryI:, 'sickID'] = 0
+    # dateList = covid_period(dateList)
 
-    scRHR = scRHR.set_index('datetime')
-    scRHR.index.name = None
+    # sick_HID vai carregar com 0, 1, 2  e 3 se o vetor é de uma época saudável, com sintomas ou doente
+    # os seguintes foor loops separam todos as horas nessas categorias
+    # TODO
+    sick_HID = []
+    if len(dateList) != 0:
+        for idx in scRHR.index:
+            if idx < dateList[0]["date"]:
+                sick_HID.append(0)
+    if len(dateList) != 0:
+        for count, lDict in enumerate(dateList):
+            if count < (len(dateList)-1):
+                next_date = dateList[count + 1]["date"]
+                for idx in scRHR.index:
+                    if idx >= lDict["date"] and idx < next_date:
+                        sick_HID.append(lDict["status"])
+            else:
+                for idx in scRHR.index:
+                    if idx >= lDict["date"]:
+                        sick_HID.append(lDict["status"])
+    else:
+        for idx in scRHR.index:
+            sick_HID.append(0)
 
-    return scRHR
+    return sick_HID
 
 
 def isolation_forestHOUR(df):
@@ -251,7 +275,7 @@ def isolation_forestHOUR(df):
     """
 
     model = IsolationForest(n_estimators=100, max_samples='auto',
-                            contamination=float(0.08), max_features=1.0)
+                            contamination=float(0.02), max_features=1.0)
 
     model.fit(df[['heartrate']])
 
@@ -273,21 +297,25 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, 
     # ax.scatter(df.index, df['heartrate'], label='rhr',
     #            marker='.', c=df['scores'], cmap='winter_r')
 
-    ax.plot(df.index, df['heartrate'], label='RHR', zorder=0)
+    ax.scatter(df.index, df['heartrate'], label='RHR', zorder=0, s=5)
 
     x = df.loc[df['anomaly'] == -1, 'heartrate']
     ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
 
-    plt.gcf().set_size_inches(8, 6)
+    plt.gcf().set_size_inches(12, 10)
 
-    ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
-              label='symptom date')
-    ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
-              label='covid_date')
-    ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
-              label='recovery_date')
-    ax.vlines(x=pre_symptom_date, ymin=plot_min, ymax=plot_max, color='m',
-              label='pre_symptom date')
+    if symptom_date:
+        ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
+                  label='symptom date')
+    if covid_date:
+        ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
+                  label='covid_date')
+    if recovery_date:
+        ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
+                  label='recovery_date')
+    if pre_symptom_date:
+        ax.vlines(x=pre_symptom_date, ymin=plot_min, ymax=plot_max, color='m',
+                  label='pre_symptom date')
 
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.title(title)
@@ -424,3 +452,36 @@ def can_be_inputed(df):
     # print(lengths_consecutive_na)
 
     return longest_na_gap, lengths_consecutive_na
+
+
+def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title):
+    """
+        Plotagem de gráficos
+    """
+
+    fig, ax = plt.subplots()
+    plot_min = df['heartrate'].min()
+    plot_max = df['heartrate'].max()
+
+    ax.scatter(df.index,
+               df["heartrate"], label="vetoresRHR", marker=".")
+
+    if symptom_date:
+        ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
+                  label='symptom date')
+    if covid_date:
+        ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
+                  label='covid_date')
+    if recovery_date:
+        ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
+                  label='recovery_date')
+    if pre_symptom_date:
+        ax.vlines(x=pre_symptom_date, ymin=plot_min, ymax=plot_max, color='m',
+                  label='pre_symptom date')
+
+    plt.gcf().set_size_inches(12, 10)
+    plt.title(title)
+    plt.gcf().autofmt_xdate()
+    plt.tight_layout()
+    plt.legend()
+    plt.show()

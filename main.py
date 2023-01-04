@@ -12,7 +12,7 @@ import datetime
 def input(df):
     """
         Inputa no dataframe um valor sempre que possuir um index vazio de minuto. Todos os minutos do dataframe
-        serão preenchidos com valores interpolados ou calculados a partir de outras funções. Sets de dados que 
+        serão preenchidos com valores interpolados ou calculados a partir de outras funções. Sets de dados que
         possuem muitas lacunas não devem ser trabalhadas
     """
 
@@ -22,7 +22,6 @@ def input(df):
     # inputa os dados no arquivo:
     minutesRHR_inp, totalLen, dfLen, lengths_consecutive_na = Anomaly_Detection.number_of_inputs(
         df)
-    dataPorc = (dfLen/totalLen)*100
 
     # TODO
     # Teste de qualidade utilizando lengths_consecutive_na
@@ -78,35 +77,67 @@ def data_org(participant, minutesRHR, scRHR, df_sick):
     time_min_org = Anomaly_Detection.organize_data(time_min_inp)
 
     # plot visualization vetores:
-    # i = 70
-    # while i < 80:
+    # i = 120
+    # while i < 130:
     #     Pre_Processing.plot(time_min_inp[i], 1, "scatter")
     #     print(len(time_min_inp[i]))
     #     print(sick_id[i])
     #     i += 1
 
-    # ISOLATION FOREST scRHR:
+    # ISOLATION FOREST scRHR
+    sick_HID = Anomaly_Detection.sick_hour(df_sick, scRHR, participant)
+
+    return time_min_org, scRHR, sick_id, dateList, sick_HID
+
+
+def dateListSeparation(dateList):
+    """
+        Separa todos os valores dentro de dateList em symptom_date, covid_date, recovery_date e
+        pre_symptom_date
+    """
+
     # TODO:
-    # scRHR = Anomaly_Detection.sick_hour(df_sick, scRHR, participant)
+    # esse método só vai levar em consideração uma data de cada tipo de análise, só vai carregar a última das datas
+    # criar método que consiga pegar o período completo, todos as datas de certa categoria, além de conseguir carregar
+    # variáveis vazias caso a data em específico não exista
 
-    return time_min_org, scRHR, sick_id, dateList
+    # associar todos os períodos de doença com o que está guardado no dateList
+    pre_symptom_date = []
+    symptom_date = []
+    covid_date = []
+    recovery_date = []
+
+    if len(dateList) != 0:
+        for data in dateList:
+            if data["status"] == 1:
+                symptom_date.append(data["date"])
+            elif data["status"] == 2:
+                covid_date.append(data["date"])
+            elif data["status"] == 0:
+                recovery_date.append(data["date"])
+            elif data["status"] == 3:
+                pre_symptom_date.append(data["date"])
+
+    if len(pre_symptom_date) == 0:
+        pre_symptom_date = None
+    if len(symptom_date) == 0:
+        symptom_date = None
+    if len(covid_date) == 0:
+        covid_date = None
+    if len(recovery_date) == 0:
+        recovery_date = None
+
+    return pre_symptom_date, symptom_date, covid_date, recovery_date
 
 
-def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateList):
+def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateList, sick_HID):
     """
         Utiliza os dados trabalhados para realizar as análises do isolation forest tanto
         para vetoresRHR e scRHR
     """
 
-    for data in dateList:
-        if data["status"] == 1:
-            symptom_date = data["date"]
-        elif data["status"] == 2:
-            covid_date = data["date"]
-        elif data["status"] == 0:
-            recovery_date = data["date"]
-        elif data["status"] == 3:
-            pre_symptom_date = data["date"]
+    pre_symptom_date, symptom_date, covid_date, recovery_date = dateListSeparation(
+        dateList)
 
     # ISOLATION FOREST vetores:
     vetoresRHR, n_anomaly = Anomaly_Detection.isolation_forestMin(
@@ -117,14 +148,46 @@ def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateLis
 
     time_min_mean['sick_ID'] = sick_id
 
+    scRHR['sick_ID'] = sick_HID
+
+    # ploting vetoresRHR, dataframe dos minutesRHR organizado em vetores
+    Anomaly_Detection.ploting(time_min_mean, pre_symptom_date,
+                              symptom_date, covid_date, recovery_date, "vetoresRHR")
+
     Anomaly_Detection.plot_anomaly(
         time_min_mean, symptom_date, covid_date, recovery_date, pre_symptom_date, "Vetores")
 
-    # ISOLATION FOREST scRHR:
-    # scRHR = Anomaly_Detection.isolation_forestHOUR(scRHR)
+    # calcular a porcentagem das anomalias
+    porcT, porcP = cont_porc(time_min_mean)
+    print("Porcentagem de anomalias detectadas corretamente: ", porcT)
+    print("Porcentagem de anomalias detectadas no período Pré-Sintomático: ", porcP)
 
-    # Anomaly_Detection.plot_anomaly(
-    #     scRHR, symptom_date, covid_date, recovery_date, "RHR Hora")
+    # ISOLATION FOREST scRHR:
+    scRHR = Anomaly_Detection.isolation_forestHOUR(scRHR)
+
+    Anomaly_Detection.plot_anomaly(
+        scRHR, symptom_date, covid_date, recovery_date, pre_symptom_date, "RHR Hora")
+
+    porcT, porcP = cont_porc(scRHR)
+    print("Porcentagem de anomalias detectadas corretamente: ", porcT)
+    print("Porcentagem de anomalias detectadas no período Pré-Sintomático: ", porcP)
+
+
+def cont_porc(df):
+    """
+        Calcula a porcentagem de anomalias detectadas no período correto de análise, além de calcular a porcentagem
+        de anomalias detectadas no período pré-sintomático.
+    """
+
+    nAno = df.loc[(df["anomaly"] == -1)]
+    nSic = df.loc[(((df["anomaly"] == -1) & (df["sick_ID"] == 1)) |
+                   ((df["anomaly"] == -1) & (df["sick_ID"] == 2)) | ((df["anomaly"] == -1) & (df["sick_ID"] == 3)))]
+    porcT = (len(nSic)/len(nAno))*100
+
+    nPre = df.loc[((df["anomaly"] == -1) & (df["sick_ID"] == 3))]
+    porcP = (len(nPre)/len(nAno))*100
+
+    return porcT, porcP
 
 
 def cont_var(vetoresRHR, sick_id):
@@ -149,14 +212,13 @@ def main():
         "/home/gustavo/PibicData1/Sick_Values_01.txt")
     if mode == "solo":
         subjects = []
-        subjects.append("AS2MVDL")
+        subjects.append("AQC0L71")
     elif mode == "full":
-        # subjects = Supplementary_Table.ParticipantID.values.tolist()
-        subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044",
-                    "AS2MVDL", "ASFODQR", "AYWIEKR", "AJMQUVV"]
+        subjects = Supplementary_Table.ParticipantID.values.tolist()
+        # test patients:
+        # subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044",
+        #             "AS2MVDL", "ASFODQR", "AYWIEKR", "AJMQUVV"]
 
-    y = []
-    z = []
     for participant in subjects:
         print(participant)
 
@@ -169,54 +231,11 @@ def main():
         df_sick = pd.read_csv(
             "/home/gustavo/PibicData1/Sick_Values_01.txt")
 
-        vetoresRHR, scRHR, sick_id, dateList = data_org(
+        vetoresRHR, scRHR, sick_id, dateList, sick_HID = data_org(
             participant, minutesRHR, scRHR, df_sick)
 
-        # Variação da contaminação:
-        # total_anomaly, true_anomaly, porc_anomaly, cont_para = cont_var(
-        #     vetoresRHR, sick_id)
-        # y.append(porc_anomaly)
-        # z.append(total_anomaly)
-
         isolation_analysis(vetoresRHR, scRHR, sick_id,
-                           df_sick, participant, dateList)
-
-    # Variação da contaminação (plots):
-    # fig, ax = plt.subplots()
-    # ax.plot(cont_para, y[0], label="AFPB8J2")
-    # ax.plot(cont_para, y[1], label="APGIB2T")
-    # ax.plot(cont_para, y[2], label="A0NVTRV")
-    # ax.plot(cont_para, y[3], label="A4G0044")
-    # ax.plot(cont_para, y[4], label="AS2MVDL")
-    # ax.plot(cont_para, y[5], label="ASFODQR")
-    # ax.plot(cont_para, y[6], label="AYWIEKR")
-    # ax.plot(cont_para, y[7], label="AJMQUVV")
-    # plt.xlabel("Contaminação")
-    # plt.ylabel("Porcentagem de Anomalias")
-    # plt.gcf().set_size_inches(8, 6)
-    # plt.title("Variação da Contaminação")
-    # plt.gcf().autofmt_xdate()
-    # plt.tight_layout()
-    # plt.legend()
-    # plt.show()
-
-    # fig, bx = plt.subplots()
-    # bx.plot(cont_para, z[0], label="AFPB8J2")
-    # bx.plot(cont_para, z[1], label="APGIB2T")
-    # bx.plot(cont_para, z[2], label="A0NVTRV")
-    # bx.plot(cont_para, z[3], label="A4G0044")
-    # bx.plot(cont_para, z[4], label="AS2MVDL")
-    # bx.plot(cont_para, z[5], label="ASFODQR")
-    # bx.plot(cont_para, z[6], label="AYWIEKR")
-    # bx.plot(cont_para, z[7], label="AJMQUVV")
-    # plt.xlabel("Contaminação")
-    # plt.ylabel("Número Total de Anomalias")
-    # plt.gcf().set_size_inches(8, 6)
-    # plt.title("Variação da Contaminação")
-    # plt.gcf().autofmt_xdate()
-    # plt.tight_layout()
-    # plt.legend()
-    # plt.show()
+                           df_sick, participant, dateList, sick_HID)
 
 
 if __name__ == '__main__':
