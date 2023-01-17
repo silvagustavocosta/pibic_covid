@@ -285,7 +285,7 @@ def isolation_forestHOUR(df):
     return df
 
 
-def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, title):
+def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, title, save_mode, participant):
     """
         Traça os gráficos do rhr levando em consideração os tempos de doenças e 
     """
@@ -319,10 +319,15 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, 
 
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.title(title)
-
     plt.gcf().autofmt_xdate()
-
     plt.tight_layout()
+
+    if save_mode == "on":
+        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        figName = title + ".jpg"
+        dir_path = os.path.join(base_path, participant, figName)
+        plt.savefig(dir_path)
+
     plt.show()
 
 
@@ -383,7 +388,6 @@ def isolation_forestMin(df, contamination):
     """
 
     # expand the x array to columns, getting an array of shape n_samples and n_features
-    # TODO expand the x array to columns, each column is the n-date of the n-element on the arrray
     df_expanded = pd.DataFrame(df['heartrate'].tolist())
 
     model = IsolationForest(n_estimators=100, max_samples='auto',
@@ -454,7 +458,7 @@ def can_be_inputed(df):
     return longest_na_gap, lengths_consecutive_na
 
 
-def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title):
+def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title, column, save_mode, participant):
     """
         Plotagem de gráficos
     """
@@ -464,7 +468,7 @@ def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title
     plot_max = df['heartrate'].max()
 
     ax.scatter(df.index,
-               df["heartrate"], label="vetoresRHR", marker=".")
+               df[column], label="vetoresRHR", marker=".")
 
     if symptom_date:
         ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
@@ -484,4 +488,11 @@ def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title
     plt.gcf().autofmt_xdate()
     plt.tight_layout()
     plt.legend()
+
+    if save_mode == "on":
+        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        figName = title + ".jpg"
+        dir_path = os.path.join(base_path, participant, figName)
+        plt.savefig(dir_path)
+
     plt.show()

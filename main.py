@@ -130,7 +130,7 @@ def dateListSeparation(dateList):
     return pre_symptom_date, symptom_date, covid_date, recovery_date
 
 
-def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateList, sick_HID):
+def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateList, sick_HID, save_mode, vetoresPorT, vetoresPorP, horasPorT, horasPorP):
     """
         Utiliza os dados trabalhados para realizar as análises do isolation forest tanto
         para vetoresRHR e scRHR
@@ -152,25 +152,32 @@ def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateLis
 
     # ploting vetoresRHR, dataframe dos minutesRHR organizado em vetores
     Anomaly_Detection.ploting(time_min_mean, pre_symptom_date,
-                              symptom_date, covid_date, recovery_date, "vetoresRHR")
+                              symptom_date, covid_date, recovery_date, "vetoresRHR", "heartrate", save_mode, participant)
 
     Anomaly_Detection.plot_anomaly(
-        time_min_mean, symptom_date, covid_date, recovery_date, pre_symptom_date, "Vetores")
+        time_min_mean, symptom_date, covid_date, recovery_date, pre_symptom_date, "Vetores", save_mode, participant)
 
     # calcular a porcentagem das anomalias
     porcT, porcP = cont_porc(time_min_mean)
+    vetoresPorT.append(porcT)
+    vetoresPorP.append(porcP)
     print("Porcentagem de anomalias detectadas corretamente: ", porcT)
     print("Porcentagem de anomalias detectadas no período Pré-Sintomático: ", porcP)
+    # adicionar os valores no controle
 
     # ISOLATION FOREST scRHR:
     scRHR = Anomaly_Detection.isolation_forestHOUR(scRHR)
 
     Anomaly_Detection.plot_anomaly(
-        scRHR, symptom_date, covid_date, recovery_date, pre_symptom_date, "RHR Hora")
+        scRHR, symptom_date, covid_date, recovery_date, pre_symptom_date, "RHR Hora", save_mode, participant)
 
     porcT, porcP = cont_porc(scRHR)
+    horasPorT.append(porcT)
+    horasPorP.append(porcP)
     print("Porcentagem de anomalias detectadas corretamente: ", porcT)
     print("Porcentagem de anomalias detectadas no período Pré-Sintomático: ", porcP)
+
+    return vetoresPorT, vetoresPorP, horasPorT, horasPorP
 
 
 def cont_porc(df):
@@ -206,18 +213,30 @@ def cont_var(vetoresRHR, sick_id):
 
 def main():
     # reading pre_processed data:
-    mode = "full"
+    mode = "solo"
+    save_mode = "off"
 
     Supplementary_Table = pd.read_csv(
-        "/home/gustavo/PibicData1/Sick_Values_01.txt")
+        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
+
+    controle = pd.read_csv(
+        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/controle")
+    del controle["Unnamed: 0"]
+
     if mode == "solo":
         subjects = []
-        subjects.append("AQC0L71")
+        subjects.append("AS2MVDL")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:
         # subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044",
         #             "AS2MVDL", "ASFODQR", "AYWIEKR", "AJMQUVV"]
+
+    # criar listas que vão acompanhar os valores do controle
+    vetoresPorT = []
+    vetoresPorP = []
+    horasPorT = []
+    horasPorP = []
 
     for participant in subjects:
         print(participant)
@@ -229,13 +248,24 @@ def main():
 
         # getting timestamps from when the subject is sick:
         df_sick = pd.read_csv(
-            "/home/gustavo/PibicData1/Sick_Values_01.txt")
+            "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
 
         vetoresRHR, scRHR, sick_id, dateList, sick_HID = data_org(
             participant, minutesRHR, scRHR, df_sick)
 
-        isolation_analysis(vetoresRHR, scRHR, sick_id,
-                           df_sick, participant, dateList, sick_HID)
+        vetoresPorT, vetoresPorP, horasPorT, horasPorP = isolation_analysis(vetoresRHR, scRHR, sick_id,
+                                                                            df_sick, participant, dateList, sick_HID, save_mode, vetoresPorT, vetoresPorP, horasPorT, horasPorP)
+
+    controle["vetoresPorT"] = vetoresPorT
+    controle["vetoresPorP"] = vetoresPorP
+    controle["horasPorT"] = horasPorT
+    controle["horasPorP"] = horasPorP
+
+    if save_mode == "on":
+        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        Pre_Processing.saving_df(controle, base_path, "controleAnalysis")
+
+    print(controle)
 
 
 if __name__ == '__main__':

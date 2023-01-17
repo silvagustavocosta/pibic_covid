@@ -17,12 +17,14 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from matplotlib.pyplot import figure
 
 
-def control_basedata(hr_data, steps_data, controle):
+def control_basedata(hr_data, steps_data, controle, cRaw_heartrate, cRaw_steps):
     hr_data = hr_data.dropna(subset=['heartrate'])
-    controle["Raw_heartrate"] = len(hr_data)
+    cRaw_heartrate.append(len(hr_data))
+    controle["Raw_heartrate"] = cRaw_heartrate
 
     steps_data = steps_data.dropna(subset=['steps'])
-    controle["Raw_steps"] = len(steps_data)
+    cRaw_steps.append(len(steps_data))
+    controle["Raw_steps"] = cRaw_steps
 
 
 def hr_outliers(df):
@@ -82,13 +84,14 @@ def organize_dataframe(df):
     return df
 
 
-def resting_heart_rate(df_hr, df_steps, controle):
+def resting_heart_rate(df_hr, df_steps, controle, cMerge_time):
     """
         This function uses heart rate and steps data to infer restign heart rate.
         It filters the heart rate with steps that are zero and also 12 minutes ahead.
     """
     resample_time = "1min"
-    controle['Merge_time'] = resample_time
+    cMerge_time.append(resample_time)
+    controle['Merge_time'] = cMerge_time
 
     # heartrate data:
     df_hr = organize_dataframe(df_hr)
@@ -146,23 +149,24 @@ def qmax(df):
     return maxq
 
 
-def moving_avarage(df_hr, controle, avarage_sample):
+def moving_avarage(df_hr, controle, avarage_sample, cSmooth_data_sample):
     """
         This function takes resting heart rate data and applies moving averages to smooth the data
     """
-    controle["Smooth_data_sample"] = avarage_sample
+    cSmooth_data_sample.append(avarage_sample)
+    controle["Smooth_data_sample"] = cSmooth_data_sample
+
     df_nonas = df_hr.dropna()
     df1_rom = df_nonas.rolling(avarage_sample).mean()
 
     return df1_rom
 
 
-def pre_processing(df1_rom, controle):
+def pre_processing(df1_rom):
     """
         This function downsamples to one hour by taking the avegare values from that hour
     """
     resample_time = '1H'
-    controle["Resample_time"] = resample_time
 
     df1_resmp = df1_rom.resample(resample_time).mean()
     df2 = df1_resmp.drop(['steps'], axis=1)
@@ -207,7 +211,7 @@ def get_sick_time(df, participant):
     return(symptom_date, covid_date, recovery_date)
 
 
-def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date, title):
+def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date, title, saveMode, participant):
 
     fig, ax = plt.subplots()
     plot_min = df['heartrate'].min()
@@ -228,6 +232,13 @@ def plot_limitations(df, coluna, symptom_date, covid_date, recovery_date, title)
     plt.gcf().autofmt_xdate()
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.tight_layout()
+
+    if saveMode == "on":
+        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        figName = title + ".jpg"
+        dir_path = os.path.join(base_path, participant, figName)
+        plt.savefig(dir_path)
+
     plt.show()
 
 
@@ -239,10 +250,14 @@ def plot(df, resultado, tipo):
     df = df.reset_index()
     header_name = df.columns.values[resultado]
     ax = df.plot(kind=tipo, x='index', y=header_name,)
+
+    plt.gcf().set_size_inches(8, 6)
+    plt.gcf().autofmt_xdate()
+    plt.tight_layout()
     plt.show()
 
 
-def plot_quality(df, coluna, title):
+def plot_quality(df, coluna, title, saveMode, participant):
     """
         Plota um gráfico tipo scatter para mostrar a qualidade dos dados de amostra 
     """
@@ -259,17 +274,25 @@ def plot_quality(df, coluna, title):
     plt.title(title)
     plt.gcf().autofmt_xdate()
     plt.tight_layout()
+
+    if saveMode == "on":
+        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        figName = title + ".jpg"
+        dir_path = os.path.join(base_path, participant, figName)
+        plt.savefig(dir_path)
+
     plt.show()
 
 
-def get_base_rhr(df, controle):
+def get_base_rhr(df, controle, cBase_rhr):
     """
         Pega o valor médio do batimento cardíaco, vai ser utilizado para plotar gráficos, o valor é dado com duas casas decimais
     """
 
     base_rhr = df['heartrate'].mean()
     base_rhr = round(base_rhr, 2)
-    controle["Base_rhr"] = base_rhr
+    cBase_rhr.append(base_rhr)
+    controle["Base_rhr"] = cBase_rhr
     return base_rhr
 
 
@@ -282,13 +305,16 @@ def seasonal_vizualisation(trend, seasonal, resid):
     plot(resid, 1, "line")
 
 
-def seasonality_correction(df_rhr_processed, controle, period):
+def seasonality_correction(df_rhr_processed, controle, period, cSasonal_period):
     """
         Aplica os métodos de correção sazonal na base de dados
     """
 
     rhr = df_rhr_processed[['heartrate']]
-    controle['Sasonal_period'] = period
+
+    # caso precise passar o sasonal_period como parâmetro para acompanhar no dicionário
+    # cSasonal_period.append(period)
+    # controle['Sasonal_period'] = cSasonal_period
 
     rhr_decomposition = seasonal_decompose(
         rhr, model='additive', period=period)
@@ -374,15 +400,17 @@ def seasonal_period(df, mode):
     return period
 
 
-def final_processing(hr_data, steps_data):
+def final_processing(hr_data, steps_data, participant, cParticipantID, cRaw_heartrate, cRaw_steps, cMerge_time, cSmooth_data_sample, cBase_rhr, cSasonal_period):
     """
         Makes all the processes of the data from one person, returning the 3 dataframes and the control dataset 
     """
     # dicionário que vai armazenar todos os parâmetros (controle de qualidade da amostra) para utilizar depois:
     controle = {}
+    cParticipantID.append(participant)
+    controle["ParticipantID"] = cParticipantID
 
     # controle de dados, pegar Batimentos Cardíacos Iniciais e passos iniciais
-    control_basedata(hr_data, steps_data, controle)
+    control_basedata(hr_data, steps_data, controle, cRaw_heartrate, cRaw_steps)
 
     # Pre-processing
     hr_data = hr_outliers(hr_data)
@@ -393,27 +421,30 @@ def final_processing(hr_data, steps_data):
     hr_data = hr_data.drop(columns=["user"])  # retira a coluna de user
     steps_data = steps_data.drop(columns=["user"])  # retira a coluna de user
 
-    df_rhr = resting_heart_rate(hr_data, steps_data, controle)
+    df_rhr = resting_heart_rate(
+        hr_data, steps_data, controle, cMerge_time)
 
     minq = qmin(organize_dataframe(hr_data))
 
     maxq = qmax(minq)
 
     # TODO forma melhor de escrever essa próxima parte do código
-    df_rhr_avarage = moving_avarage(df_rhr, controle, 400)
+    df_rhr_avarage = moving_avarage(df_rhr, controle, 400, cSmooth_data_sample)
+
     df_rhr_avarage1 = df_rhr_avarage.drop(['steps'], axis=1)
     df_rhr_avarage2 = df_rhr_avarage1.dropna()
 
-    df_rhr_processed = pre_processing(df_rhr_avarage, controle)
+    df_rhr_processed = pre_processing(df_rhr_avarage)
 
-    base_rhr = get_base_rhr(df_rhr_processed, controle)
+    base_rhr = get_base_rhr(df_rhr_processed, controle, cBase_rhr)
 
     period = seasonal_period(df_rhr_processed, 'hour')
-    scRHR = seasonality_correction(df_rhr_processed, controle, period)
+    scRHR = seasonality_correction(
+        df_rhr_processed, controle, period, cSasonal_period)
 
     period = seasonal_period(df_rhr_avarage2, 'minute')
     minutes_rhr = seasonality_correction(
-        df_rhr_avarage2, controle, period)
+        df_rhr_avarage2, controle, period, cSasonal_period)
     minutes_rhr = minutes_rhr.dropna()
 
     scRHR = scRHR.dropna()
@@ -456,14 +487,28 @@ def main():
     save_mode = "off"
 
     Supplementary_Table = pd.read_csv(
-        "/home/gustavo/PibicData1/Sick_Values_01.txt")
+        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
     if mode == "solo":
         subjects = []
         subjects.append("A0KX894")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
+        # test subjects
+        # subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044",
+        #             "AS2MVDL", "ASFODQR", "AYWIEKR", "AJMQUVV"]
 
-    df_sick = pd.read_csv("/home/gustavo/PibicData1/Sick_Values_01.txt")
+    df_sick = pd.read_csv(
+        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
+
+    # criar os parametros do dicionario controle em formato de listas (carregam os valores)
+    # para todos os participantes
+    cParticipantID = []
+    cRaw_heartrate = []
+    cRaw_steps = []
+    cMerge_time = []
+    cSmooth_data_sample = []
+    cBase_rhr = []
+    cSasonal_period = []
 
     for subject in subjects:
         # importar os arquivos
@@ -478,8 +523,9 @@ def main():
         symptom_date, covid_date, recovery_date = get_sick_time(
             df_sick, participant)
 
+        # em final_processing estamos passando as listas que vão formar o dicionário final total
         scRHR, stdRHR, minutesRHR, base_rhr, controle = final_processing(
-            hr_data, steps_data)
+            hr_data, steps_data, participant, cParticipantID, cRaw_heartrate, cRaw_steps, cMerge_time, cSmooth_data_sample, cBase_rhr, cSasonal_period)
 
         if save_mode == "on":
             save_files(participant, scRHR, stdRHR, minutesRHR,
@@ -487,18 +533,23 @@ def main():
         else:
             continue
 
-    # ploting:
-    plot_limitations(scRHR, 'heartrate', symptom_date,
-                     covid_date, recovery_date, "scRHR")
+        # ploting:
+        plot_limitations(scRHR, 'heartrate', symptom_date,
+                         covid_date, recovery_date, "scRHR", save_mode, participant)
 
-    plot_limitations(minutesRHR, 'heartrate', symptom_date,
-                     covid_date, recovery_date, "minutesRHR")
+        plot_limitations(minutesRHR, 'heartrate', symptom_date,
+                         covid_date, recovery_date, "minutesRHR", save_mode, participant)
 
-    plot_quality(scRHR, 'qmax', "Número de Amostras por Hora dos Dados")
+        plot_quality(
+            scRHR, 'qmax', "Número de Amostras por Hora dos Dados", save_mode, participant)
 
-    # probability_distribution(scRHR)
+        # probability_distribution(scRHR)
 
+    controle = pd.DataFrame.from_dict(controle)
     print(controle)
+    if save_mode == "on":
+        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        saving_df(controle, base_path, "controle")
 
 
 if __name__ == '__main__':
