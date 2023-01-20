@@ -11,7 +11,7 @@ import datetime
 from sklearn.ensemble import IsolationForest
 
 
-def data_org(minutesRHR):
+def data_org(minutesRHR, vetorsize):
     """
         Separa o minutesRHR (dataframe minutesRHR ou scRHR) e vai dividir o paciente em vetores (os vetores vão possuir 7, 14, 21 ou 28 dias), 
         vão estar separados entre si em 1 dia.
@@ -23,7 +23,7 @@ def data_org(minutesRHR):
     minutesRHR.index.name = None
     minutesRHR.index = pd.to_datetime(minutesRHR.index)
 
-    vetoresMin = slidingFunctions.day_time_separation(minutesRHR, 7)
+    vetoresMin = slidingFunctions.day_time_separation(minutesRHR, vetorsize)
 
     # construindo o dataframe que vai carregar os índices (última data dos vetores) e a quantidade de anomalias
     df = pd.DataFrame()
@@ -44,7 +44,7 @@ def data_org(minutesRHR):
 
     df["data"] = vetorData
 
-    return vetoresMin, df
+    return vetoresMin, df, minutesRHR
 
 
 def isolationForestVetores(vetores, df):
@@ -54,16 +54,25 @@ def isolationForestVetores(vetores, df):
         vetor a uma data (índice) e o número de anomalias (coluna) de um dataframe 
     """
 
+    countAnomaly = []
     for vetor in vetores:
         model = IsolationForest(n_estimators=100, max_samples='auto',
                                 contamination=float(0.02), max_features=1.0)
 
-        model.fit(vetor[["heartrate"]])
+        x_dates = vetor.index.values
+        y_rhr = vetor[["heartrate"]].values
 
-        vetor['scores'] = model.decision_function(vetor[["heartrate"]])
-        vetor['anomaly'] = model.predict(vetor[["heartrate"]])
+        model.fit(y_rhr)
 
-    return vetores
+        vetor['scores'] = model.decision_function(y_rhr)
+        vetor['anomaly'] = model.predict(y_rhr)
+
+        anomaly_count = len(vetor.loc[vetor['anomaly'] == -1])
+        countAnomaly.append(anomaly_count)
+
+    df["countAnomaly"] = countAnomaly
+
+    return vetores, df
 
 
 def main():
@@ -93,16 +102,19 @@ def main():
         df_sick = pd.read_csv(
             "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
 
-        vetoresMin, dfMin = data_org(minutesRHR)
+        vetoresMin, dfMin, minutesRHR = data_org(minutesRHR, 7)
 
         # plot dos vetores de acordo com a posição
         # slidingFunctions.visualizationVetores(vetoresMin, 0, 7)
 
         # Isolation Forest em cada vetor
-        vetoresMin = isolationForestVetores(vetoresMin, dfMin)
+        vetoresMin, dfMin = isolationForestVetores(vetoresMin, dfMin)
 
         # plot dos vetores com as anomalias
-        slidingFunctions.plotAnomalyVetores(vetoresMin, 0, 7)
+        # slidingFunctions.plotAnomalyVetores(vetoresMin, 0, 6)
+
+        # plota o número de anomalias vs data em comparativo com as curvas do dataframe
+        slidingFunctions.plotFullAnalysis(minutesRHR, dfMin)
 
 
 if __name__ == '__main__':

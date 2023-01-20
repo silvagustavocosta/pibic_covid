@@ -101,3 +101,26 @@ def plotAnomalyVetores(vetores, init, end):
         plt.show()
 
         init += 1
+
+
+def plotFullAnalysis(origDF, anomalyDF):
+    """
+        Plotar o gráfico de número de anomalias (dos vetores) VS os dias da amostra
+        No próprio gráfico levar em consideração a qualidade do vetor para o dia (utilizar um esquema de cores), 
+        um vetor (representado pelo dia) que tem uma boa qualidade 
+        Plotar também as datas que determinam o período pré_sintomatico, sintomas, covid e recuperação
+    """
+
+    fig, axs = plt.subplots(2)
+
+    axs[0].plot(origDF.index, origDF["heartrate"], label='rhr', marker='.')
+    axs[1].scatter(anomalyDF.index,
+                   anomalyDF["countAnomaly"], label='Anomaly Count', color="r")
+
+    plt.gcf().set_size_inches(14, 10)
+
+    plt.title("Número de Anomalias vs Dias de amostra")
+    plt.gcf().autofmt_xdate()
+    axs[0].legend(bbox_to_anchor=(1, 1), loc='upper left')
+    plt.tight_layout()
+    plt.show()
