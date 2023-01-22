@@ -124,3 +124,46 @@ def plotFullAnalysis(origDF, anomalyDF):
     axs[0].legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.tight_layout()
     plt.show()
+
+
+def qualityHR(hr_data):
+    """
+        Qualidade da hora analisada, quantas amostras no HR (dados não processados), 
+        definir porcentagem (quantidade de minutos com dados/60)*100
+    """
+
+    hr_data = hr_data.set_index("datetime")
+    hr_data.index.name = None
+    hr_data.index = pd.to_datetime(hr_data.index)
+
+    # resampling the data to 1min, deixa o dataframe completo com valores nulos = nan
+    hr_data = hr_data.resample("1min").mean()
+    hr_data["heartrate"] = hr_data["heartrate"].fillna(0)
+
+    # associar o minuto que não possui dados, ["heartrate"] == 0, com valor de 0. Minuto que possui dado com valor de 1
+    hr_data["Qmin_HR"] = np.where(hr_data["heartrate"] == 0, 0, 1)
+
+    # para cada hora de análise, realizar a operação: (somatório de Qmin_HR/60)*100
+    hr_dataHour = pd.DataFrame()
+    hr_dataHour = hr_data.resample("1H").sum()
+    hr_dataHour["Qmin_HR"] = (hr_dataHour["Qmin_HR"]/60)*100
+    hr_dataHour = hr_dataHour.drop(columns=["heartrate"])
+
+    # qualidade da amostra para um dia
+    hr_dataDay = pd.DataFrame()
+    hr_dataDay = hr_data.resample("1D").sum()
+    hr_dataDay["Qday_HR"] = (hr_dataDay["Qmin_HR"]/1440)*100
+    hr_dataDay = hr_dataDay.drop(columns=["heartrate", "Qmin_HR"])
+
+    # qualidade de amostras para a semana
+    hr_dataWeek = pd.DataFrame()
+    hr_dataWeek = hr_data.resample("1W").sum()
+    hr_dataWeek["Qweek_HR"] = (hr_dataWeek["Qmin_HR"]/10080)*100
+    hr_dataWeek = hr_dataWeek.drop(columns=["heartrate", "Qmin_HR"])
+
+    # ploting quality data for HR
+    # Pre_Processing.plot(hr_dataHour, 1, "scatter")
+    # Pre_Processing.plot(hr_dataDay, 1, "scatter")
+    # Pre_Processing.plot(hr_dataWeek, 1, "scatter")
+
+    return hr_dataHour, hr_dataDay, hr_dataWeek

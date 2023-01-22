@@ -18,7 +18,6 @@ def data_org(minutesRHR, vetorsize):
         O último dia do vetor é o que define o próprio vetor 
     """
 
-    minutesRHR.rename(columns={'Unnamed: 0': 'datetime'}, inplace=True)
     minutesRHR = minutesRHR.set_index("datetime")
     minutesRHR.index.name = None
     minutesRHR.index = pd.to_datetime(minutesRHR.index)
@@ -83,7 +82,7 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("AS2MVDL")
+        subjects.append("A3OU183")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:
@@ -98,9 +97,31 @@ def main():
         scRHR = pd.read_csv(
             "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/scRHR")
 
+        # importar dados brutos para realizar a análise de qualidade
+        hr_data = pd.read_csv(
+            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_hr.csv")
+        steps_data = pd.read_csv(
+            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_steps.csv")
+
+        hr_data = Pre_Processing.hr_outliers(hr_data)
+        hr_data = hr_data.drop_duplicates()  # remove the duplicates
+        steps_data = steps_data.drop_duplicates()  # remove the duplicates
+        hr_data = hr_data.drop(columns=["user"])  # retira a coluna de user
+        steps_data = steps_data.drop(
+            columns=["user"])  # retira a coluna de user
+
         # getting timestamps from when the subject is sick:
         df_sick = pd.read_csv(
             "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
+
+        # encontrando a qualidade das amostras HR
+        hr_dataHour, hr_dataDay, hr_dataWeek = slidingFunctions.qualityHR(
+            hr_data)
+
+        # encontrando a qualidade das amostras RHR
+        minutesRHR.rename(columns={'Unnamed: 0': 'datetime'}, inplace=True)
+        rhr_dataHour, rhr_dataDay, rhr_dataWeek = slidingFunctions.qualityHR(
+            minutesRHR)
 
         vetoresMin, dfMin, minutesRHR = data_org(minutesRHR, 7)
 
