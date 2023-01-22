@@ -4,6 +4,7 @@ import Anomaly_Detection
 import Test_Functions
 import slidingFunctions
 import pandas as pd
+from main import dateListSeparation
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -74,6 +75,34 @@ def isolationForestVetores(vetores, df):
     return vetores, df
 
 
+def time_stamps(df_sick, participant):
+    """
+        Faz todas as análises para separar os períodos de interesse.
+        PreSymptomatic, Symptomatic, Covid, Recovery.
+    """
+
+    symptom_date, covid_date, recovery_date = Pre_Processing.get_sick_time(
+        df_sick, participant)
+
+    symptom_date, covid_date, recovery_date = Anomaly_Detection.get_date(
+        symptom_date, covid_date, recovery_date)
+
+    # # Período pré-sintomático: 14 dias antes do início das anomalias
+    if symptom_date:
+        pre_symptom_date = []
+        pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=14))
+    else:
+        pre_symptom_date = None
+
+    dateList = Anomaly_Detection.sort_datas(symptom_date, covid_date,
+                                            recovery_date, pre_symptom_date)
+
+    pre_symptom_date, symptom_date, covid_date, recovery_date = dateListSeparation(
+        dateList)
+
+    return dateList, pre_symptom_date, symptom_date, covid_date, recovery_date
+
+
 def main():
     mode = "solo"
 
@@ -82,7 +111,7 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("A3OU183")
+        subjects.append("AS2MVDL")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:
@@ -123,7 +152,10 @@ def main():
         rhr_dataHour, rhr_dataDay, rhr_dataWeek = slidingFunctions.qualityHR(
             minutesRHR)
 
-        vetoresMin, dfMin, minutesRHR = data_org(minutesRHR, 7)
+        dateList, pre_symptom_date, symptom_date, covid_date, recovery_date = time_stamps(
+            df_sick, participant)
+
+        vetoresMin, dfMin, minutesRHR = data_org(minutesRHR, 28)
 
         # plot dos vetores de acordo com a posição
         # slidingFunctions.visualizationVetores(vetoresMin, 0, 7)
@@ -135,7 +167,9 @@ def main():
         # slidingFunctions.plotAnomalyVetores(vetoresMin, 0, 6)
 
         # plota o número de anomalias vs data em comparativo com as curvas do dataframe
-        slidingFunctions.plotFullAnalysis(minutesRHR, dfMin)
+
+        slidingFunctions.plotFullAnalysis(
+            minutesRHR, dfMin, pre_symptom_date, symptom_date, covid_date, recovery_date)
 
 
 if __name__ == '__main__':

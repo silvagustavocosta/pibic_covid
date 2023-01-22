@@ -287,7 +287,7 @@ def isolation_forestHOUR(df):
 
 def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, title, save_mode, participant):
     """
-        Traça os gráficos do rhr levando em consideração os tempos de doenças e 
+        Traça os gráficos do rhr levando em consideração os tempos de doenças 
     """
 
     fig, ax = plt.subplots()

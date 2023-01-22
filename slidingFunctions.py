@@ -103,7 +103,7 @@ def plotAnomalyVetores(vetores, init, end):
         init += 1
 
 
-def plotFullAnalysis(origDF, anomalyDF):
+def plotFullAnalysis(origDF, anomalyDF, pre_symptom_date, symptom_date, covid_date, recovery_date):
     """
         Plotar o gráfico de número de anomalias (dos vetores) VS os dias da amostra
         No próprio gráfico levar em consideração a qualidade do vetor para o dia (utilizar um esquema de cores), 
@@ -112,12 +112,37 @@ def plotFullAnalysis(origDF, anomalyDF):
     """
 
     fig, axs = plt.subplots(2)
+    plot_min0 = origDF['heartrate'].min()
+    plot_max0 = origDF['heartrate'].max()
+    plot_min1 = anomalyDF['countAnomaly'].min()
+    plot_max1 = anomalyDF['countAnomaly'].max()
 
     axs[0].plot(origDF.index, origDF["heartrate"], label='rhr', marker='.')
     axs[1].scatter(anomalyDF.index,
                    anomalyDF["countAnomaly"], label='Anomaly Count', color="r")
 
     plt.gcf().set_size_inches(14, 10)
+
+    if symptom_date:
+        axs[0].vlines(x=symptom_date, ymin=plot_min0, ymax=plot_max0, color='y',
+                      label='symptom date')
+        axs[1].vlines(x=symptom_date, ymin=plot_min1, ymax=plot_max1, color='y',
+                      label='symptom date')
+    if covid_date:
+        axs[0].vlines(x=covid_date, ymin=plot_min0, ymax=plot_max0, color='r',
+                      label='covid_date')
+        axs[1].vlines(x=covid_date, ymin=plot_min1, ymax=plot_max1, color='r',
+                      label='covid_date')
+    if recovery_date:
+        axs[0].vlines(x=recovery_date, ymin=plot_min0, ymax=plot_max0, color='g',
+                      label='recovery_date')
+        axs[1].vlines(x=recovery_date, ymin=plot_min1, ymax=plot_max1, color='g',
+                      label='recovery_date')
+    if pre_symptom_date:
+        axs[0].vlines(x=pre_symptom_date, ymin=plot_min0, ymax=plot_max0, color='m',
+                      label='pre_symptom date')
+        axs[1].vlines(x=pre_symptom_date, ymin=plot_min1, ymax=plot_max1, color='m',
+                      label='pre_symptom date')
 
     plt.title("Número de Anomalias vs Dias de amostra")
     plt.gcf().autofmt_xdate()
