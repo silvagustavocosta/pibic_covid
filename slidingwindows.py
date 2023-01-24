@@ -111,7 +111,7 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("AS2MVDL")
+        subjects.append("AR4FPCC")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:
@@ -131,6 +131,14 @@ def main():
             "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_hr.csv")
         steps_data = pd.read_csv(
             "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_steps.csv")
+
+        # dataframe que contém os resultados das análises de main.py
+        controleQuality = pd.read_csv(
+            "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/controleAnalysis")
+        controleQuality = controleQuality.sort_values(
+            by="vetoresPorT", ascending=False)
+        # print(controleQuality)
+        # break
 
         hr_data = Pre_Processing.hr_outliers(hr_data)
         hr_data = hr_data.drop_duplicates()  # remove the duplicates
@@ -155,7 +163,7 @@ def main():
         dateList, pre_symptom_date, symptom_date, covid_date, recovery_date = time_stamps(
             df_sick, participant)
 
-        vetoresMin, dfMin, minutesRHR = data_org(minutesRHR, 28)
+        vetoresMin, dfMin, minutesRHR = data_org(minutesRHR, 7)
 
         # plot dos vetores de acordo com a posição
         # slidingFunctions.visualizationVetores(vetoresMin, 0, 7)
@@ -167,7 +175,6 @@ def main():
         # slidingFunctions.plotAnomalyVetores(vetoresMin, 0, 6)
 
         # plota o número de anomalias vs data em comparativo com as curvas do dataframe
-
         slidingFunctions.plotFullAnalysis(
             minutesRHR, dfMin, pre_symptom_date, symptom_date, covid_date, recovery_date)
 

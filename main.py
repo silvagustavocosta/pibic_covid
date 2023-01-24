@@ -225,7 +225,7 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("AS2MVDL")
+        subjects.append("AR4FPCC")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:
@@ -256,10 +256,10 @@ def main():
         vetoresPorT, vetoresPorP, horasPorT, horasPorP = isolation_analysis(vetoresRHR, scRHR, sick_id,
                                                                             df_sick, participant, dateList, sick_HID, save_mode, vetoresPorT, vetoresPorP, horasPorT, horasPorP)
 
-    controle["vetoresPorT"] = vetoresPorT
-    controle["vetoresPorP"] = vetoresPorP
-    controle["horasPorT"] = horasPorT
-    controle["horasPorP"] = horasPorP
+    # controle["vetoresPorT"] = vetoresPorT
+    # controle["vetoresPorP"] = vetoresPorP
+    # controle["horasPorT"] = horasPorT
+    # controle["horasPorP"] = horasPorP
 
     if save_mode == "on":
         base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
