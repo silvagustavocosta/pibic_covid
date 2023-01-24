@@ -192,3 +192,76 @@ def qualityHR(hr_data):
     # Pre_Processing.plot(hr_dataWeek, 1, "scatter")
 
     return hr_dataHour, hr_dataDay, hr_dataWeek
+
+
+def vector_association(vetoresMin, dateList):
+    """
+        Associar cada vetor como pré-sintomático, sintomático, covid e recuperação
+    """
+
+    sick_id = []
+    if len(dateList) != 0:
+        for vetor in vetoresMin:
+            if vetor.index[0] < dateList[0]["date"]:
+                sick_id.append(0)
+    if len(dateList) != 0:
+        for count, lDict in enumerate(dateList):
+            if count < (len(dateList)-1):
+                next_date = dateList[count + 1]["date"]
+                for vetor in vetoresMin:
+                    if vetor.index[0] >= lDict["date"] and vetor.index[0] < next_date:
+                        sick_id.append(lDict["status"])
+            else:
+                for vetor in vetoresMin:
+                    if vetor.index[0] >= lDict["date"]:
+                        sick_id.append(lDict["status"])
+    else:
+        for vetor in vetoresMin:
+            sick_id.append(0)
+
+    return sick_id
+
+
+def vector_qualityHR(vetoresMin, vector_lengthDays, hr_dataDay):
+    """
+        Associar o valor de qualidade para o tamanho do vetor utilizando os dados de hr_dataDay. Se o vetor for do tamanho de 7 dias,
+        associar os 7 dias para esse vetor 
+    """
+
+    vetoresHR = []
+    for vetor in vetoresMin:
+        firstDay = vetor.index[0]
+        lastDay = vetor.index[-1]
+
+        daysDF = pd.date_range(start=firstDay,
+                               end=lastDay, freq='1D')
+        daysList = []
+        for day in daysDF:
+            day = day.replace(hour=0, minute=0, second=0, microsecond=0)
+            daysList.append(day)
+
+        soma = 0
+        for day in daysList:
+            x = hr_dataDay._get_value(day, "Qday_HR", takeable=False)
+            soma = soma + x
+        mean = soma/(vector_lengthDays+1)
+
+        vetoresHR.append(mean)
+
+    return vetoresHR
+
+
+def ContVarSd(vetoresMin):
+    """
+        Calcular a Variância e Desvio Padrão de cada vetor
+    """
+
+    varList = []
+    sdList = []
+    for vetor in vetoresMin:
+        var = vetor.var()
+        sd = vetor.std()
+        varList.append(var)
+        sdList.append(sd)
+
+    return varList, sdList
