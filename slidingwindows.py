@@ -23,7 +23,8 @@ def data_org(minutesRHR, vetorsize):
     minutesRHR.index.name = None
     minutesRHR.index = pd.to_datetime(minutesRHR.index)
 
-    vetoresMin = slidingFunctions.day_time_separation(minutesRHR, vetorsize)
+    vetoresMin, initIndexes, endIndexes = slidingFunctions.day_time_separation(
+        minutesRHR, vetorsize)
 
     # construindo o dataframe que vai carregar os índices (última data dos vetores) e a quantidade de anomalias
     df = pd.DataFrame()
@@ -44,7 +45,7 @@ def data_org(minutesRHR, vetorsize):
 
     df["data"] = vetorData
 
-    return vetoresMin, df, minutesRHR
+    return vetoresMin, df, minutesRHR, initIndexes, endIndexes
 
 
 def isolationForestVetores(vetores, df):

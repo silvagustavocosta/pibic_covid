@@ -72,11 +72,12 @@ def main():
             df_sick, participant)
 
         vector_lengthDays = 6
-        vetoresMin, dfMin, minutesRHR = slidingwindows.data_org(
+        vetoresMin, dfMin, minutesRHR, initIndexes, endIndexes = slidingwindows.data_org(
             minutesRHR, vector_lengthDays)
 
         # plot dos vetores de acordo com a posição
-        # slidingFunctions.visualizationVetores(vetoresMin, 0, 7)
+        # slidingFunctions.visualizationVetores(vetoresMin, 33, 37)
+        # idicesdeexemplo = [33, 34, 35, 36]
 
         # associar cada vetor como pré-sintomático, sintomático, covid e recuperação. sick_id vai carregar esses valores
         sick_id = slidingFunctions.vector_association(vetoresMin, dateList)
@@ -88,7 +89,11 @@ def main():
 
         varList, sdList = slidingFunctions.ContVarSd(vetoresMin)
 
-        print(len(varList), len(sdList))
+        # Associar intervalos consecutivos sem dados para cada vetor (definir separadamente um treshhold e aplicar no vetor).
+        # Inputar os dados nos vetores
+        # TODO utilizar os dados brutos para o cálculo de qualityConsecNa e não os dados em rhr (que vão levar em consideração os momentos de descanso)
+        vetoresMinInp, qualityConsecNa = slidingFunctions.input_data(
+            vetoresMin, vector_lengthDays, initIndexes, endIndexes)
 
 
 if __name__ == '__main__':

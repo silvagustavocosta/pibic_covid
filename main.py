@@ -21,7 +21,7 @@ def input(df):
     # detectar arquivos que podem ou não ser inputados:
     # inputa os dados no arquivo:
     minutesRHR_inp, totalLen, dfLen, lengths_consecutive_na = Anomaly_Detection.number_of_inputs(
-        df)
+        df, "off", None, None)
 
     # TODO
     # Teste de qualidade utilizando lengths_consecutive_na

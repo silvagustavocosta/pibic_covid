@@ -403,13 +403,17 @@ def isolation_forestMin(df, contamination):
     return df, anomaly_count
 
 
-def number_of_inputs(df):
+def number_of_inputs(df, mode, initIndex, endIndex):
     """
         Carrega quantos dados vão ser inputados para que o dataframe fique completo, inputa os dados no dataframe
     """
 
-    firstIndex = df.index[0]
-    lastIndex = df.index[-1]
+    if mode == "off":
+        firstIndex = df.index[0]
+        lastIndex = df.index[-1]
+    elif mode == "on":
+        firstIndex = initIndex
+        lastIndex = endIndex
 
     dates = pd.date_range(firstIndex, lastIndex, freq="1min")
     totalLen = len(dates)

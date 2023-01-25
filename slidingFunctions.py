@@ -53,15 +53,15 @@ def day_time_separation(df, size):
 
     # idx = df.index[df.index.get_loc(teste, method='nearest')]
 
-    initIndexes = df.index[df.index.get_indexer(initIndexes, method="nearest")]
-    endIndexes = df.index[df.index.get_indexer(endIndexes, method="nearest")]
+    initIndeesC = df.index[df.index.get_indexer(initIndexes, method="nearest")]
+    endIndexesC = df.index[df.index.get_indexer(endIndexes, method="nearest")]
 
     vetores = []
-    for i in range(len(initIndexes)):
-        vetor = df[initIndexes[i]:endIndexes[i]]
+    for i in range(len(initIndeesC)):
+        vetor = df[initIndeesC[i]:endIndexesC[i]]
         vetores.append(vetor)
 
-    return vetores
+    return vetores, initIndexes, endIndexes
 
 
 def visualizationVetores(vetores, init, end):
@@ -265,3 +265,32 @@ def ContVarSd(vetoresMin):
         sdList.append(sd)
 
     return varList, sdList
+
+
+def input_data(vetoresMin, vector_lengthDays, initIndexes, endIndexes):
+    """
+        Garantir que todos os vetores tenham o mesmo tamanho (mesmo número de dados por análise). Inputar os dados na análise.[
+        Associar o lengths_consecutive_na a cada vetor, definir o treshhold e aplicar ao vetor, carregar esse valor como qualidade
+        para o vetor.
+    """
+    vetoresMinInp = []
+    qualityConsecNa = []
+    for i, vetor in enumerate(vetoresMin):
+
+        vetor, totalLen, dfLen, lengths_consecutive_na = Anomaly_Detection.number_of_inputs(
+            vetor, "on", initIndexes[i], endIndexes[i])
+
+        vetoresMinInp.append(vetor)
+
+        # Associar intervalos consecutivos sem dados para cada vetor (definir separadamente um treshhold e aplicar no vetor)
+        lengths_consecutive_na = lengths_consecutive_na.to_frame()
+        lengths_consecutive_na.set_axis(
+            ["nullSize"], axis="columns", inplace=True)
+
+        dataTresh = lengths_consecutive_na.loc[lengths_consecutive_na["nullSize"] > 30]
+        somaLen = dataTresh.sum()
+        qualityConsecNaValue = (somaLen/len(vetor))*100
+
+        qualityConsecNa.append(float(qualityConsecNaValue))
+
+    return vetoresMinInp, qualityConsecNa
