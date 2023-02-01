@@ -24,6 +24,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 import Pre_Processing
 from sklearn.ensemble import IsolationForest
 import Anomaly_Detection
+import slidingwindows
 
 
 def day_time_separation(df, size):
@@ -280,6 +281,10 @@ def input_data(vetoresMin, vector_lengthDays, initIndexes, endIndexes):
         vetor, totalLen, dfLen, lengths_consecutive_na = Anomaly_Detection.number_of_inputs(
             vetor, "on", initIndexes[i], endIndexes[i])
 
+        # os NaN valores que sobraram são substituídos pela média dos dados de rhr
+        columnavarage = vetor["heartrate"].mean()
+        vetor = vetor.fillna(columnavarage)
+
         vetoresMinInp.append(vetor)
 
         # Associar intervalos consecutivos sem dados para cada vetor (definir separadamente um treshhold e aplicar no vetor)
@@ -287,10 +292,39 @@ def input_data(vetoresMin, vector_lengthDays, initIndexes, endIndexes):
         lengths_consecutive_na.set_axis(
             ["nullSize"], axis="columns", inplace=True)
 
-        dataTresh = lengths_consecutive_na.loc[lengths_consecutive_na["nullSize"] > 30]
+        dataTresh = lengths_consecutive_na.loc[lengths_consecutive_na["nullSize"] > 15]
         somaLen = dataTresh.sum()
         qualityConsecNaValue = (somaLen/len(vetor))*100
 
         qualityConsecNa.append(float(qualityConsecNaValue))
 
     return vetoresMinInp, qualityConsecNa
+
+
+def consecutivesNa(hr_data, vector_lengthDays, initIndexes, endIndexes):
+    """
+        Calcular o qualityConsecNa para os dados brutos de HR
+    """
+
+    hr_data = hr_data.set_index("datetime")
+    hr_data.index.name = None
+    hr_data.index = pd.to_datetime(hr_data.index)
+
+    originalIndexes = hr_data.index
+    originalIndexes = originalIndexes.drop_duplicates(keep=False)
+
+    initIndexesC = originalIndexes[originalIndexes.get_indexer(
+        initIndexes, method="nearest")]
+    endIndexesC = originalIndexes[originalIndexes.get_indexer(
+        endIndexes, method="nearest")]
+
+    # separar a data de HR nos períodos estabelecidos por initIndexesC e endIndexesC
+    vetores = []
+    for i in range(len(initIndexesC)):
+        vetor = hr_data[initIndexesC[i]:endIndexesC[i]]
+        vetores.append(vetor)
+
+    vetoresMinInp, qualityConsecNa = input_data(
+        vetores, vector_lengthDays, initIndexesC, endIndexesC)
+
+    return qualityConsecNa

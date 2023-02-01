@@ -225,7 +225,7 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("AR4FPCC")
+        subjects.append("AS2MVDL")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:

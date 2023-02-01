@@ -84,16 +84,37 @@ def main():
 
         # associar os parâmetros de qualidade a cada vetor
         # associar valor de qualidade para o tamanho do vetor utilizando os dados de hr_dataDay
-        vetoresHR = slidingFunctions.vector_qualityHR(
+        QvetoresHR = slidingFunctions.vector_qualityHR(
             vetoresMin, vector_lengthDays, hr_dataDay)
 
-        varList, sdList = slidingFunctions.ContVarSd(vetoresMin)
+        QvarList, QsdList = slidingFunctions.ContVarSd(vetoresMin)
 
         # Associar intervalos consecutivos sem dados para cada vetor (definir separadamente um treshhold e aplicar no vetor).
         # Inputar os dados nos vetores
-        # TODO utilizar os dados brutos para o cálculo de qualityConsecNa e não os dados em rhr (que vão levar em consideração os momentos de descanso)
-        vetoresMinInp, qualityConsecNa = slidingFunctions.input_data(
+        vetoresMinInp, QqualityConsecNa = slidingFunctions.input_data(
             vetoresMin, vector_lengthDays, initIndexes, endIndexes)
+
+        # TODO
+        # calcular o QqualityConsecNa para os dados brutos de HR
+        QqualityConsecNa = slidingFunctions.consecutivesNa(
+            hr_data, vector_lengthDays, initIndexes, endIndexes)
+
+        # plot dos vetores de acordo com a posição
+        # slidingFunctions.visualizationVetores(vetoresMinInp, 33, 37)
+
+        # Isolation Forest
+        # Dividir os vetores em um único vetor total com a data incial do vetor sendo o índice, a coluna rhr são os valores de rhr separados
+        vetoresRHR = Anomaly_Detection.organize_data(vetoresMinInp)
+        # Aplicar Isolation Forest
+        vetoresRHR, n_anomaly = Anomaly_Detection.isolation_forestMin(
+            vetoresRHR, 0.13)
+        # Análise para o plot
+        time_min_mean = vetoresRHR.copy()
+        time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
+        time_min_mean['sick_ID'] = sick_id
+
+        Anomaly_Detection.plot_anomaly(time_min_mean, symptom_date, covid_date,
+                                       recovery_date, pre_symptom_date, "Vetores", "off", participant)
 
 
 if __name__ == '__main__':
