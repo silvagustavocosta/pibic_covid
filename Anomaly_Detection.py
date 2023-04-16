@@ -285,7 +285,7 @@ def isolation_forestHOUR(df):
     return df
 
 
-def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, title, save_mode, participant):
+def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, title, save_mode, participant, xlabel, path):
     """
         Traça os gráficos do rhr levando em consideração os tempos de doenças 
     """
@@ -297,7 +297,7 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, 
     # ax.scatter(df.index, df['heartrate'], label='rhr',
     #            marker='.', c=df['scores'], cmap='winter_r')
 
-    ax.scatter(df.index, df['heartrate'], label='RHR', zorder=0, s=5)
+    ax.scatter(df.index, df['heartrate'], label=xlabel, zorder=0, s=5)
 
     x = df.loc[df['anomaly'] == -1, 'heartrate']
     ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
@@ -323,9 +323,9 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, 
     plt.tight_layout()
 
     if save_mode == "on":
-        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        base_path = path
         figName = title + ".jpg"
-        dir_path = os.path.join(base_path, participant, figName)
+        dir_path = os.path.join(base_path, figName)
         plt.savefig(dir_path)
 
     plt.show()
@@ -462,7 +462,7 @@ def can_be_inputed(df):
     return longest_na_gap, lengths_consecutive_na
 
 
-def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title, column, save_mode, participant):
+def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title, column, save_mode, participant, xlabel, path):
     """
         Plotagem de gráficos
     """
@@ -472,7 +472,7 @@ def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title
     plot_max = df['heartrate'].max()
 
     ax.scatter(df.index,
-               df[column], label="vetoresRHR", marker=".")
+               df[column], label=xlabel, marker=".")
 
     if symptom_date:
         ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
@@ -494,9 +494,81 @@ def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title
     plt.legend()
 
     if save_mode == "on":
-        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        base_path = path
         figName = title + ".jpg"
-        dir_path = os.path.join(base_path, participant, figName)
+        dir_path = os.path.join(base_path, figName)
+        plt.savefig(dir_path)
+
+    plt.show()
+
+
+def detection_window(participant, symptom_date, covid_date):
+    """
+        The detection window used to determine if the anomalys detected in the period are hits or miss. 
+        The window spams around the sympton onset (wherever available), 14 days before and 7 days after. If the symptom onset date is 
+        missing, we replace it by the covid date
+    """
+
+    if not covid_date and not symptom_date:
+        return
+
+    # se não possuo symptom date, utilizar covid_date
+    if not symptom_date:
+        udate = covid_date
+    else:
+        udate = symptom_date
+
+    detectionWindow = []
+    for date in udate:
+        detectionWindow.append(date - datetime.timedelta(days=14))
+        detectionWindow.append(date + datetime.timedelta(days=7))
+
+    return detectionWindow
+
+
+def finalPlot(df, symptom_date, covid_date, recovery_date, detectionWindow, title, save_mode, participant, xlabel, path):
+    """
+    """
+
+    fig, ax = plt.subplots()
+    plot_min = df['heartrate'].min()
+    plot_max = df['heartrate'].max()
+
+    # ax.scatter(df.index, df['heartrate'], label='rhr',
+    #            marker='.', c=df['scores'], cmap='winter_r')
+
+    ax.scatter(df.index, df['heartrate'], label=xlabel, zorder=0, s=5)
+    x = df.loc[df['anomaly'] == -1, 'heartrate']
+    ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
+
+    plt.gcf().set_size_inches(12, 10)
+
+    if symptom_date:
+        ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='purple',
+                  label='symptom date', linestyle='--')
+    if covid_date:
+        ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
+                  label='covid_date', linestyle='--')
+    if recovery_date:
+        ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
+                  label='recovery_date', linestyle='--')
+    if detectionWindow:
+        for count in range(0, len(detectionWindow), 2):
+            ax.plot(detectionWindow[count], plot_max,
+                    color="orange", marker=">", markersize=20)
+            ax.plot(detectionWindow[count+1], plot_max,
+                    color="orange", marker="<", markersize=20)
+            plt.legend(markerscale=0.5)
+
+    ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
+    plt.title(title)
+    plt.gcf().autofmt_xdate()
+    plt.tight_layout()
+
+    if save_mode == "on":
+        base_path = path
+        figName = title + ".jpg"
+        dir_path = os.path.join(base_path, figName)
         plt.savefig(dir_path)
 
     plt.show()

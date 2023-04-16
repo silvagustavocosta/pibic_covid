@@ -276,6 +276,9 @@ def input_data(vetoresMin, vector_lengthDays, initIndexes, endIndexes):
     """
     vetoresMinInp = []
     qualityConsecNa = []
+
+    count = 0
+
     for i, vetor in enumerate(vetoresMin):
 
         vetor, totalLen, dfLen, lengths_consecutive_na = Anomaly_Detection.number_of_inputs(
@@ -310,8 +313,16 @@ def consecutivesNa(hr_data, vector_lengthDays, initIndexes, endIndexes):
     hr_data.index.name = None
     hr_data.index = pd.to_datetime(hr_data.index)
 
+    hr_data = hr_data.reset_index().drop_duplicates(
+        subset='index', keep='first').set_index('index')
+
     originalIndexes = hr_data.index
     originalIndexes = originalIndexes.drop_duplicates(keep=False)
+
+    originalIndexes = sorted(originalIndexes)
+    endIndexes = sorted(endIndexes)
+    originalIndexes = pd.to_datetime(originalIndexes)
+    endIndexes = pd.to_datetime(endIndexes)
 
     initIndexesC = originalIndexes[originalIndexes.get_indexer(
         initIndexes, method="nearest")]
@@ -324,7 +335,156 @@ def consecutivesNa(hr_data, vector_lengthDays, initIndexes, endIndexes):
         vetor = hr_data[initIndexesC[i]:endIndexesC[i]]
         vetores.append(vetor)
 
+    # erro no vetores[21]
     vetoresMinInp, qualityConsecNa = input_data(
         vetores, vector_lengthDays, initIndexesC, endIndexesC)
 
     return qualityConsecNa
+
+
+def MeanRealVectorization(vetores, symptom_date, covid_date, recovery_date, pre_symptom_date):
+    """
+        Calcular a média móvel dos dados de RHR nos vetores, inicialmente calcular a média para um vetor, 
+        depois para dois vetores e incrementar a quantidade de vetores para cada passo dado;
+    """
+
+    # adicionar índice no dataframe
+    vetores = vetores.reset_index(inplace=False)
+
+    meanTotal = []
+    for i in range(1, len(vetores)+1):
+        df = vetores[0:i]
+
+        rhrArrays = df["heartrate"]
+        mergedArray = np.concatenate(rhrArrays)
+        mean = mergedArray.mean()
+
+        meanTotal.append(mean)
+
+    # calcular os valores da distorção
+    listDistortion = distortion(vetores, meanTotal)
+    vetores["realDistortion"] = listDistortion
+
+    # plotar os valores da distorção de acordo com o tamanho do vetor
+    vetores = vetores.set_index("index")
+    vetores.index.name = None
+    vetores.index = pd.to_datetime(vetores.index)
+
+    # Pre_Processing.plot(vetores, 4, "scatter")
+    distortionPlot(vetores, symptom_date, covid_date,
+                   recovery_date, pre_symptom_date)
+
+
+def meanTotalVectorization(vetores, symptom_date, covid_date, recovery_date, pre_symptom_date):
+    """
+        Calcular a média usando todos os vetores disponíveis menos o atual;
+        Calcular a distorção para cada vetor calculado usando essa média;
+    """
+
+    # adicionar índice no dataframe
+    vetores = vetores.reset_index(inplace=False)
+
+    meanTotal = []
+    for i in range(len(vetores)):
+        df = vetores.drop(i)
+
+        df = df.reset_index(inplace=False)
+        rhrArrays = df["heartrate"]
+        mergedArray = np.concatenate(rhrArrays)
+
+        mean = mergedArray.mean()
+        meanTotal.append(mean)
+
+    listDistortion = distortion(vetores, meanTotal)
+    vetores["realDistortion"] = listDistortion
+
+    # plotar os valores da distorção de acordo com o tamanho do vetor
+    vetores = vetores.set_index("index")
+    vetores.index.name = None
+    vetores.index = pd.to_datetime(vetores.index)
+
+    # Pre_Processing.plot(vetores, 4, "scatter")
+    distortionPlot(vetores, symptom_date, covid_date,
+                   recovery_date, pre_symptom_date)
+
+
+def meanHealthyVectorization(vetores, symptom_date, covid_date, recovery_date, pre_symptom_date, sick_id):
+    """
+        Calcular a média apenas quando o paciente estava bem ou pré-sintomático;
+    """
+
+    vetores["sick"] = sick_id
+
+    df = vetores.loc[(vetores['sick'] == 0) | (vetores['sick'] == 3)]
+    df = df.reset_index(inplace=False)
+
+    rhrArrays = df["heartrate"]
+    mergedArray = np.concatenate(rhrArrays)
+
+    mean = mergedArray.mean()
+    meanTotal = []
+    for i in range(len(vetores)):
+        meanTotal.append(mean)
+
+    listDistortion = distortion(vetores, meanTotal)
+    vetores["realDistortion"] = listDistortion
+
+    vetores = vetores.drop(columns="sick")
+
+    # Pre_Processing.plot(vetores, 4, "scatter")
+    distortionPlot(vetores, symptom_date, covid_date,
+                   recovery_date, pre_symptom_date)
+
+
+def distortionPlot(df, symptom_date, covid_date, recovery_date, pre_symptom_date):
+    fig, ax = plt.subplots()
+    plot_min = df['realDistortion'].min()
+    plot_max = df['realDistortion'].max()
+
+    ax.scatter(df.index, df['realDistortion'],
+               label='realDistortion', zorder=0, s=10)
+
+    plt.gcf().set_size_inches(12, 10)
+
+    if symptom_date:
+        ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
+                  label='symptom date')
+    if covid_date:
+        ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
+                  label='covid_date')
+    if recovery_date:
+        ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
+                  label='recovery_date')
+    if pre_symptom_date:
+        ax.vlines(x=pre_symptom_date, ymin=plot_min, ymax=plot_max, color='m',
+                  label='pre_symptom date')
+
+    ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
+    plt.gcf().autofmt_xdate()
+    plt.tight_layout()
+    plt.show()
+
+
+def distortion(vetores, meanTotal):
+    """
+        Calcular a distorção para cada vetor calculado nessa média, dado pela diferença das médias ao longo dos vetores, comparar o dado em rhr
+        com a média do vetor atual
+    """
+
+    listDistortion = []
+    for i in range(1, len(vetores)+1):
+        mean = meanTotal[i-1]
+
+        df = vetores[0:i]
+        rhrArrays = df["heartrate"]
+        mergedArray = np.concatenate(rhrArrays)
+
+        minor_distortion = []
+        for rhr in mergedArray:
+            x = (rhr - mean)**2
+            minor_distortion.append(x)
+
+        distortion = (sum(minor_distortion))/len(minor_distortion)
+        listDistortion.append(distortion)
+
+    return listDistortion
