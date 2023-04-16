@@ -25,12 +25,12 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("AV2GF3B")
+        subjects.append("A35BJNV")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:
-        # subjects = ["AFPB8J2", "APGIB2T", "A0NVTRV", "A4G0044",
-        #             "AS2MVDL", "ASFODQR", "AYWIEKR", "AJMQUVV"]
+        subjects = ["ASFODQR", "AHYIJDV", "AX6281V", "AJMQUVV", "A4G0044",
+                    "AIFDJZB", "AJWW3IY", "APGIB2T", "AS2MVDL", "AYWIEKR", "AZIK4ZA"]
 
     for participant in subjects:
         print(participant)
@@ -87,11 +87,17 @@ def main():
             minutesRHR, vector_lengthDays)
 
         # plot dos vetores de acordo com a posição
-        # slidingFunctions.visualizationVetores(vetoresMin, 33, 37)
-        # idicesdeexemplo = [33, 34, 35, 36]
+        # slidingFunctions.visualizationVetores(vetoresMin, 0, 10)
+
+        # Cálculo Detection Window
+        detectionWindow = Anomaly_Detection.detection_window(
+            participant, symptom_date, covid_date)
 
         # associar cada vetor como pré-sintomático, sintomático, covid e recuperação. sick_id vai carregar esses valores
         sick_id = slidingFunctions.vector_association(vetoresMin, dateList)
+
+        detec_id = slidingFunctions.detectionWindowAssociation(
+            vetoresMin, detectionWindow)
 
         # associar os parâmetros de qualidade a cada vetor
         # associar valor de qualidade para o tamanho do vetor utilizando os dados de hr_dataDay
@@ -104,7 +110,6 @@ def main():
         QsdList = pd.Series(QsdList)
         QsdList = QsdList.astype(float)
 
-        # Associar intervalos consecutivos sem dados para cada vetor (definir separadamente um treshhold e aplicar no vetor).
         # Inputar os dados nos vetores
         vetoresMinInp, QqualityConsecNa = slidingFunctions.input_data(
             vetoresMin, vector_lengthDays, initIndexes, endIndexes)
@@ -119,30 +124,52 @@ def main():
         quality["QConsecNa"] = QqualityConsecNa
         quality["Var"] = QvarList
         quality["SD"] = QsdList
+        mean_A = quality['QHR'].mean()
+        mean_B = quality['QConsecNa'].mean()
+        mean_C = quality['Var'].mean()
+        mean_D = quality['SD'].mean()
 
         # plot dos vetores de acordo com a posição
         # slidingFunctions.visualizationVetores(vetoresMinInp, 33, 37)
 
-        # Cálculo Detection Window
-        detectionWindow = Anomaly_Detection.detection_window(
-            participant, symptom_date, covid_date)
+        vetoresMinInp = slidingFunctions.final_input(vetoresMinInp)
 
         # Isolation Forest
         # Dividir os vetores em um único vetor total com a data incial do vetor sendo o índice, a coluna rhr são os valores de rhr separados
         vetoresRHR = Anomaly_Detection.organize_data(vetoresMinInp)
         # Aplicar Isolation Forest
         vetoresRHR, n_anomaly = Anomaly_Detection.isolation_forestMin(
-            vetoresRHR, 0.13)
+            vetoresRHR, 0.15)
         # Análise para o plot
         time_min_mean = vetoresRHR.copy()
         time_min_mean['heartrate'] = time_min_mean['heartrate'].apply(np.mean)
         time_min_mean['sick_ID'] = sick_id
+        time_min_mean['detection_window'] = detec_id
+
+        quality["anomaly"] = time_min_mean["anomaly"].tolist()
+        mean_E = quality['anomaly'].mean()
+        quality.loc['mean'] = [mean_A, mean_B, mean_C, mean_D, mean_E]
+        mean_A = quality.loc[quality['anomaly'] == -1, 'QHR'].mean()
+        mean_B = quality.loc[quality['anomaly'] == -1, 'QConsecNa'].mean()
+        mean_C = quality.loc[quality['anomaly'] == -1, 'Var'].mean()
+        mean_D = quality.loc[quality['anomaly'] == -1, 'SD'].mean()
+        mean_E = quality.loc[quality['anomaly'] == -1, 'anomaly'].mean()
+        quality.loc['mean_anomaly'] = [mean_A, mean_B, mean_C, mean_D, mean_E]
+        print(quality)
+
+        # contar porcentagem de anomalias nos períodos doentes/sintomáticos e nos períodos de detectionwindow
+        porcT, porcP = slidingFunctions.por(time_min_mean)
+        print("Porcentagem de anomalias nos intervalos de sintomas, pré-sintomas e de doença:", porcT)
+        print("Porcentagem de anomalias nos intervalos de detecção:", porcP)
 
         if save_mode == "on":
             Pre_Processing.saving_df(
                 time_min_mean, dir_path, "AnDetection VetoresSW")
             Pre_Processing.saving_df(
                 quality, dir_path, "Qualidade dos Vetores")
+
+        slidingFunctions.finalPlot_quality(
+            scRHR, 'qmax', "Número de Amostras por Hora dos Dados", save_mode, participant, symptom_date, covid_date, detectionWindow, recovery_date)
 
         Anomaly_Detection.finalPlot(time_min_mean, symptom_date, covid_date,
                                     recovery_date, detectionWindow, "Detecção de Anomalias Vetores Sliding Windows de 7 dias", save_mode, participant, "Vetor Sliding Windows", dir_path)

@@ -285,7 +285,7 @@ def isolation_forestHOUR(df):
     return df
 
 
-def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, title, save_mode, participant, xlabel, path):
+def plot_anomaly(df, symptom_date, covid_date, recovery_date, detectionWindow, title, save_mode, participant, xlabel, path):
     """
         Traça os gráficos do rhr levando em consideração os tempos de doenças 
     """
@@ -302,7 +302,7 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, 
     x = df.loc[df['anomaly'] == -1, 'heartrate']
     ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
 
-    plt.gcf().set_size_inches(12, 10)
+    plt.gcf().set_size_inches(12, 6)
 
     if symptom_date:
         ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
@@ -313,9 +313,13 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, pre_symptom_date, 
     if recovery_date:
         ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
                   label='recovery_date')
-    if pre_symptom_date:
-        ax.vlines(x=pre_symptom_date, ymin=plot_min, ymax=plot_max, color='m',
-                  label='pre_symptom date')
+    if detectionWindow:
+        for count in range(0, len(detectionWindow), 2):
+            ax.plot(detectionWindow[count], plot_max,
+                    color="orange", marker=">", markersize=20)
+            ax.plot(detectionWindow[count+1], plot_max,
+                    color="orange", marker="<", markersize=20)
+            plt.legend(markerscale=0.5)
 
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.title(title)
@@ -541,7 +545,7 @@ def finalPlot(df, symptom_date, covid_date, recovery_date, detectionWindow, titl
     x = df.loc[df['anomaly'] == -1, 'heartrate']
     ax.scatter(x.index, x, c='r', marker='.', label='Anomaly', zorder=5)
 
-    plt.gcf().set_size_inches(12, 10)
+    plt.gcf().set_size_inches(12, 6)
 
     if symptom_date:
         ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='purple',

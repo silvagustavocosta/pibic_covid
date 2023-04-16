@@ -155,8 +155,11 @@ def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateLis
     Anomaly_Detection.ploting(time_min_mean, pre_symptom_date,
                               symptom_date, covid_date, recovery_date, "VetoresRHR Hora", "heartrate", save_mode, participant, "vetorRHR", dir_path)
 
+    detectionWindow = Anomaly_Detection.detection_window(
+        participant, symptom_date, covid_date)
+
     Anomaly_Detection.plot_anomaly(
-        time_min_mean, symptom_date, covid_date, recovery_date, pre_symptom_date, "Detecção Anomalias VetoresRHR Hora", save_mode, participant, "vetorRHR", dir_path)
+        time_min_mean, symptom_date, covid_date, recovery_date, detectionWindow, "Detecção Anomalias VetoresRHR Hora", save_mode, participant, "vetorRHR", dir_path)
 
     # calcular a porcentagem das anomalias
     porcT, porcP = cont_porc(time_min_mean)
@@ -170,7 +173,7 @@ def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateLis
     scRHR = Anomaly_Detection.isolation_forestHOUR(scRHR)
 
     Anomaly_Detection.plot_anomaly(
-        scRHR, symptom_date, covid_date, recovery_date, pre_symptom_date, "Detecção de Anomalias RHR Hora", save_mode, participant, "RHR Hora", dir_path)
+        scRHR, symptom_date, covid_date, recovery_date, detectionWindow, "Detecção de Anomalias RHR Hora", save_mode, participant, "RHR Hora", dir_path)
 
     # saving
     if save_mode == "on":
@@ -232,7 +235,7 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("APGIB2T")
+        subjects.append("ASFODQR")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:

@@ -266,7 +266,7 @@ def plot_quality(df, coluna, title, saveMode, participant):
 
     plt.scatter(df.index, df[coluna], c=df[coluna],
                 cmap='Blues')
-    plt.gcf().set_size_inches(12, 10)
+    plt.gcf().set_size_inches(12, 6)
 
     cbar = plt.colorbar()
     cbar.set_label('Qualidade')
@@ -546,7 +546,7 @@ def main():
         # probability_distribution(scRHR)
 
     controle = pd.DataFrame.from_dict(controle)
-    print(controle)
+    # print(controle)
     if save_mode == "on":
         base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
         saving_df(controle, base_path, "controle")

@@ -223,6 +223,33 @@ def vector_association(vetoresMin, dateList):
     return sick_id
 
 
+def detectionWindowAssociation(vetoresMin, detectionWindow):
+    """
+        Associar os vetores com o período marcado pela detection window
+    """
+
+    detec_id = []
+    if not detectionWindow:
+        return
+
+    for vetor in vetoresMin:
+        x = 0
+        first_date = vetor.index[0]
+        for count in range(0, len(detectionWindow), 2):
+            start_date = detectionWindow[count]
+            end_date = detectionWindow[count + 1]
+            if start_date <= first_date <= end_date:
+                detec_id.append(1)
+                x = 1
+                break
+        if x == 0:
+            detec_id.append(0)
+        else:
+            x = 1
+
+    return detec_id
+
+
 def vector_qualityHR(vetoresMin, vector_lengthDays, hr_dataDay):
     """
         Associar o valor de qualidade para o tamanho do vetor utilizando os dados de hr_dataDay. Se o vetor for do tamanho de 7 dias,
@@ -295,7 +322,7 @@ def input_data(vetoresMin, vector_lengthDays, initIndexes, endIndexes):
         lengths_consecutive_na.set_axis(
             ["nullSize"], axis="columns", inplace=True)
 
-        dataTresh = lengths_consecutive_na.loc[lengths_consecutive_na["nullSize"] > 15]
+        dataTresh = lengths_consecutive_na.loc[lengths_consecutive_na["nullSize"] > 240]
         somaLen = dataTresh.sum()
         qualityConsecNaValue = (somaLen/len(vetor))*100
 
@@ -488,3 +515,86 @@ def distortion(vetores, meanTotal):
         listDistortion.append(distortion)
 
     return listDistortion
+
+
+def final_input(vetoresMinInp):
+    """
+        Caso ainda existam vetores que são totalmente formados por NaN values, inputar dados da média total dos RHR
+    """
+
+    df_concat = pd.concat(vetoresMinInp, axis=0)
+    baserhr = df_concat['heartrate'].mean()
+
+    for vetor in vetoresMinInp:
+        if vetor["heartrate"].isna().all() == True:
+            vetor["heartrate"] = baserhr
+
+    return vetoresMinInp
+
+
+def por(df):
+    """
+        Contar porcentagem de anomalias nos períodos doentes/sintomáticos e nos períodos de detectionwindow
+    """
+
+    nAno = df.loc[(df["anomaly"] == -1)]
+
+    nSic = df.loc[(((df["anomaly"] == -1) & (df["sick_ID"] == 1)) |
+                   ((df["anomaly"] == -1) & (df["sick_ID"] == 2)) | ((df["anomaly"] == -1) & (df["sick_ID"] == 3)))]
+    porcT = (len(nSic)/len(nAno))*100
+
+    nDet = df.loc[((df["anomaly"] == -1) & (df["detection_window"] == 1))]
+    porcP = (len(nDet)/len(nAno))*100
+
+    return porcT, porcP
+
+
+def finalPlot_quality(df, coluna, title, saveMode, participant, symptom_date, covid_date, detectionWindow, recovery_date):
+    """
+        Plota os dados de qualidade baseados em scRHR
+    """
+
+    df.set_index(df.columns[0], inplace=True)
+    new_index = pd.to_datetime(df.index)
+    df.index = new_index
+
+    fig, ax = plt.subplots()
+    plot_min = df['qmax'].min()
+    plot_max = df['qmax'].max()
+
+    plt.scatter(df.index, df[coluna], color="b")
+    # plt.scatter(df.index, df[coluna], c=df[coluna], cmap='Blues')
+    plt.gcf().set_size_inches(12, 6)
+
+    # cbar = plt.colorbar()
+    # cbar.set_label('Qualidade')
+
+    if symptom_date:
+        ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='purple',
+                  label='symptom date', linestyle='--')
+    if covid_date:
+        ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
+                  label='covid_date', linestyle='--')
+    if recovery_date:
+        ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
+                  label='recovery_date', linestyle='--')
+    if detectionWindow:
+        for count in range(0, len(detectionWindow), 2):
+            ax.plot(detectionWindow[count], plot_max,
+                    color="orange", marker=">", markersize=20)
+            ax.plot(detectionWindow[count+1], plot_max,
+                    color="orange", marker="<", markersize=20)
+            plt.legend(markerscale=0.5)
+
+    ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
+    plt.title(title)
+    plt.gcf().autofmt_xdate()
+    plt.tight_layout()
+
+    if saveMode == "on":
+        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        figName = title + ".jpg"
+        dir_path = os.path.join(base_path, participant, figName)
+        plt.savefig(dir_path)
+
+    plt.show()
