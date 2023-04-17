@@ -91,7 +91,7 @@ def time_stamps(df_sick, participant):
     # # Período pré-sintomático: 14 dias antes do início das anomalias
     if symptom_date:
         pre_symptom_date = []
-        pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=14))
+        pre_symptom_date.append(symptom_date[0] - datetime.timedelta(days=15))
     else:
         pre_symptom_date = None
 

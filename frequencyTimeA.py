@@ -25,7 +25,7 @@ def main():
 
     if mode == "solo":
         subjects = []
-        subjects.append("A35BJNV")
+        subjects.append("AS2MVDL")
     elif mode == "full":
         subjects = Supplementary_Table.ParticipantID.values.tolist()
         # test patients:
@@ -173,6 +173,30 @@ def main():
 
         Anomaly_Detection.finalPlot(time_min_mean, symptom_date, covid_date,
                                     recovery_date, detectionWindow, "Detecção de Anomalias Vetores Sliding Windows de 7 dias", save_mode, participant, "Vetor Sliding Windows", dir_path)
+
+        print(time_min_mean)
+
+        # valores pré-filtrados:
+        freq_health, freq_pre, freq_symp = slidingFunctions.anomaly_frequency(
+            time_min_mean)
+
+        # filtragem de anomalias que estão sozinhas em um intervalo de uma semana
+        time_min_mean_filtered = slidingFunctions.filtragem(time_min_mean)
+
+        # print os dados filtrados
+        print("Análise final com anomalias filtradas")
+        Anomaly_Detection.finalPlot(time_min_mean_filtered, symptom_date, covid_date,
+                                    recovery_date, detectionWindow, "Detecção de Anomalias Vetores Sliding Windows de 7 dias", save_mode, participant, "Vetor Sliding Windows", dir_path)
+
+        Ffreq_health, Ffreq_pre, Ffreq_symp = slidingFunctions.anomaly_frequency(
+            time_min_mean_filtered)
+
+        print(freq_health)
+        print(Ffreq_health)
+        print(freq_pre)
+        print(Ffreq_pre)
+        print(freq_symp)
+        print(Ffreq_symp)
 
         # Anomaly_Detection.plot_anomaly(time_min_mean, symptom_date, covid_date,
         #                                recovery_date, pre_symptom_date, "Detecção de Anomalias Vetores Sliding Windows de 7 dias", save_mode, participant, "Vetor Sliding Windows", dir_path)

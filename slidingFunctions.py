@@ -598,3 +598,51 @@ def finalPlot_quality(df, coluna, title, saveMode, participant, symptom_date, co
         plt.savefig(dir_path)
 
     plt.show()
+
+
+def anomaly_frequency(df):
+    """
+        Vai calcular a frequência de anomalias em cada uma das etapas onde os dados estão divididos, período pré-sintomático,
+        período sintomático e período saudável. 
+    """
+
+    # cálculo para o período saudável
+    countVetores = len(df[(df['sick_ID'] == 0)])
+    countAnomalys = len(df[(df['sick_ID'] == 0) & (df['anomaly'] == -1)])
+    freq_health = countAnomalys/countVetores
+
+    # cálculo para o período pre-sintomatico
+    countVetores = len(df[(df['sick_ID'] == 3)])
+    countAnomalys = len(df[(df['sick_ID'] == 3) & (df['anomaly'] == -1)])
+    freq_pre = countAnomalys/countVetores
+
+    # cálculo para o período sintomático
+    countVetores = len(df[(df['sick_ID'] == 1)
+                          | (df['sick_ID'] == 2)])
+    countAnomalys = len(df[(df['sick_ID'] == 1) & (
+        df['anomaly'] == -1)]) + len(df[(df['sick_ID'] == 2) & (df['anomaly'] == -1)])
+    freq_symp = countAnomalys/countVetores
+
+    return freq_health, freq_pre, freq_symp
+
+
+def filtragem(df):
+    """
+        Loop to iterate over the elements of the column and check for the specific condition of having a sequence of seven numbers with one 1 and six 0.
+    """
+
+    df = df.reset_index(drop=False)
+    i = 0
+    while i < len(df):
+        if df.loc[i, 'anomaly'] == -1 and i <= len(df) - 7:
+            if df.loc[i+1:i+6, 'anomaly'].tolist() == [1, 1, 1, 1, 1, 1] and (i == 0 or df.loc[i-1, 'anomaly'] != -1) and (i+7 == len(df) or df.loc[i+7, 'anomaly'] != -1):
+                df.loc[i, 'anomaly'] = 1
+                i += 7  # Skip the next 7 elements since we know they are all 1's
+            else:
+                i += 1
+        else:
+            i += 1
+
+    df = df.set_index('index')
+
+    return df
