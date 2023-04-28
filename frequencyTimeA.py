@@ -20,18 +20,21 @@ def main():
     mode = "solo"
     save_mode = 'off'
 
+    # Supplementary_Table = pd.read_csv(
+    #     "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
     Supplementary_Table = pd.read_csv(
-        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
+        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/One.csv")
 
     if mode == "solo":
         subjects = []
-        subjects.append("AS2MVDL")
+        subjects.append("P305571")
     elif mode == "full":
-        subjects = Supplementary_Table.ParticipantID.values.tolist()
-        # test patients:
-        subjects = ["ASFODQR", "AHYIJDV", "AX6281V", "AJMQUVV", "A4G0044",
-                    "AIFDJZB", "AJWW3IY", "APGIB2T", "AS2MVDL", "AYWIEKR", "AZIK4ZA"]
-
+        # subjects = Supplementary_Table.ParticipantID.values.tolist()
+        # usuarios com dados limpos:
+        subjects = ["P110465", "P111019", "P182427", "P206998", "P230742", "P249349", "P256033", "P271946", "P279697", "P292181", "P305571", "P320539", "P333074", "P355472", "P389953", "P401732", "P442730", "P469888", "P469946", "P476443", "P476514", "P500432", "P511540", "P516467",
+                    "P530788", "P542912", "P543995", "P549078", "P584112", "P612886", "P625831", "P631814", "P635568", "P662021", "P662924", "P682517", "P693795", "P708653", "P723961", "P726139", "P741171", "P749288", "P754260", "P759795", "P799237", "P839431", "P851598", "P954010", "P992022"]
+        # subjects = ["AFPB8J2", "APGIB2T", "AQC0L71", "AD77K91", "A3OU183", "AX6281V", "A4E0D03", "AS2MVDL", "AKXN5ZZ", "AF3J1YC", "AJWW3IY", "AAXAA7Z",
+        #             "AHYIJDV", "AURCTAK", "A1K5DRI", "A7EM0B6", "ASFODQR", "AZIK4ZA", "AYWIEKR", "AIFDJZB", "A1ZJ41O", "A35BJNV", "AOGFRXL", "AFHOHOM"]
     for participant in subjects:
         print(participant)
 
@@ -48,10 +51,14 @@ def main():
             "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/scRHR")
 
         # importar dados brutos para realizar a análise de qualidade
+        # hr_data = pd.read_csv(
+        #     "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_hr.csv")
+        # steps_data = pd.read_csv(
+        #     "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_steps.csv")
         hr_data = pd.read_csv(
-            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_hr.csv")
+            "/mnt/d/PIBIC/Data Final/" + participant + "_hr.csv")
         steps_data = pd.read_csv(
-            "/home/gustavo/PibicData1/COVID-19-Wearables/" + participant + "_steps.csv")
+            "/mnt/d/PIBIC/Data Final/" + participant + "_steps.csv")
 
         # dataframe que contém os resultados das análises de main.py
         controleQuality = pd.read_csv(
@@ -79,10 +86,11 @@ def main():
         rhr_dataHour, rhr_dataDay, rhr_dataWeek = slidingFunctions.qualityHR(
             minutesRHR)
 
+        # TODO
         dateList, pre_symptom_date, symptom_date, covid_date, recovery_date = slidingwindows.time_stamps(
             df_sick, participant)
 
-        vector_lengthDays = 6
+        vector_lengthDays = 7
         vetoresMin, dfMin, minutesRHR, initIndexes, endIndexes = slidingwindows.data_org(
             minutesRHR, vector_lengthDays)
 
@@ -113,6 +121,8 @@ def main():
         # Inputar os dados nos vetores
         vetoresMinInp, QqualityConsecNa = slidingFunctions.input_data(
             vetoresMin, vector_lengthDays, initIndexes, endIndexes)
+
+        # slidingFunctions.visualizationVetores(vetoresMinInp, 0, 10)
 
         # calcular o QqualityConsecNa para os dados brutos de HR
         QqualityConsecNa = slidingFunctions.consecutivesNa(
@@ -155,12 +165,11 @@ def main():
         mean_D = quality.loc[quality['anomaly'] == -1, 'SD'].mean()
         mean_E = quality.loc[quality['anomaly'] == -1, 'anomaly'].mean()
         quality.loc['mean_anomaly'] = [mean_A, mean_B, mean_C, mean_D, mean_E]
-        print(quality)
 
         # contar porcentagem de anomalias nos períodos doentes/sintomáticos e nos períodos de detectionwindow
         porcT, porcP = slidingFunctions.por(time_min_mean)
-        print("Porcentagem de anomalias nos intervalos de sintomas, pré-sintomas e de doença:", porcT)
-        print("Porcentagem de anomalias nos intervalos de detecção:", porcP)
+        quality["PorcT"] = porcT
+        quality["PorcP"] = porcP
 
         if save_mode == "on":
             Pre_Processing.saving_df(
@@ -169,14 +178,12 @@ def main():
                 quality, dir_path, "Qualidade dos Vetores")
 
         slidingFunctions.finalPlot_quality(
-            scRHR, 'qmax', "Número de Amostras por Hora dos Dados", save_mode, participant, symptom_date, covid_date, detectionWindow, recovery_date)
+            scRHR, 'qmax', "Número de Amostras por Hora dos Dados", save_mode, participant, symptom_date, covid_date, detectionWindow, recovery_date, dir_path)
 
         Anomaly_Detection.finalPlot(time_min_mean, symptom_date, covid_date,
                                     recovery_date, detectionWindow, "Detecção de Anomalias Vetores Sliding Windows de 7 dias", save_mode, participant, "Vetor Sliding Windows", dir_path)
 
-        print(time_min_mean)
-
-        # valores pré-filtrados:
+        # valores de frequência pré-filtrados:
         freq_health, freq_pre, freq_symp = slidingFunctions.anomaly_frequency(
             time_min_mean)
 
@@ -184,19 +191,26 @@ def main():
         time_min_mean_filtered = slidingFunctions.filtragem(time_min_mean)
 
         # print os dados filtrados
-        print("Análise final com anomalias filtradas")
-        Anomaly_Detection.finalPlot(time_min_mean_filtered, symptom_date, covid_date,
-                                    recovery_date, detectionWindow, "Detecção de Anomalias Vetores Sliding Windows de 7 dias", save_mode, participant, "Vetor Sliding Windows", dir_path)
 
+        Anomaly_Detection.finalPlot(time_min_mean_filtered, symptom_date, covid_date,
+                                    recovery_date, detectionWindow, "Detecção de Anomalias Vetores Sliding Windows de 7 dias Filtrados", save_mode, participant, "Vetor Sliding Windows", dir_path)
+
+        # valores de frequência filtrados
         Ffreq_health, Ffreq_pre, Ffreq_symp = slidingFunctions.anomaly_frequency(
             time_min_mean_filtered)
 
-        print(freq_health)
-        print(Ffreq_health)
-        print(freq_pre)
-        print(Ffreq_pre)
-        print(freq_symp)
-        print(Ffreq_symp)
+        fileName = participant + ".txt"
+        full_path = os.path.join(dir_path, fileName)
+
+        if save_mode == "on":
+            with open(full_path, 'w') as file:
+                # write some text to the file
+                file.write(str(freq_health) + '\n')
+                file.write(str(Ffreq_health) + '\n')
+                file.write(str(freq_pre) + '\n')
+                file.write(str(Ffreq_pre) + '\n')
+                file.write(str(freq_symp) + '\n')
+                file.write(str(Ffreq_symp) + '\n')
 
         # Anomaly_Detection.plot_anomaly(time_min_mean, symptom_date, covid_date,
         #                                recovery_date, pre_symptom_date, "Detecção de Anomalias Vetores Sliding Windows de 7 dias", save_mode, participant, "Vetor Sliding Windows", dir_path)

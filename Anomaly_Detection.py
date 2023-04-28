@@ -321,6 +321,9 @@ def plot_anomaly(df, symptom_date, covid_date, recovery_date, detectionWindow, t
                     color="orange", marker="<", markersize=20)
             plt.legend(markerscale=0.5)
 
+    plt.xlabel('Data')
+    plt.ylabel('Número de dados de frequência cardíaca na hora')
+
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.title(title)
     plt.gcf().autofmt_xdate()
@@ -476,22 +479,22 @@ def ploting(df, pre_symptom_date, symptom_date, covid_date, recovery_date, title
     plot_max = df['heartrate'].max()
 
     ax.scatter(df.index,
-               df[column], label=xlabel, marker=".")
+               df[column], label="Vetores de RHR", marker=".")
 
     if symptom_date:
         ax.vlines(x=symptom_date, ymin=plot_min, ymax=plot_max, color='y',
-                  label='symptom date')
+                  label='symptom date', linestyle='--')
     if covid_date:
         ax.vlines(x=covid_date, ymin=plot_min, ymax=plot_max, color='r',
-                  label='covid_date')
+                  label='covid_date', linestyle='--')
     if recovery_date:
         ax.vlines(x=recovery_date, ymin=plot_min, ymax=plot_max, color='g',
-                  label='recovery_date')
-    if pre_symptom_date:
-        ax.vlines(x=pre_symptom_date, ymin=plot_min, ymax=plot_max, color='m',
-                  label='pre_symptom date')
+                  label='recovery_date', linestyle='--')
 
-    plt.gcf().set_size_inches(12, 10)
+    plt.xlabel('Data')
+    plt.ylabel('Número de dados de frequência cardíaca na hora')
+
+    plt.gcf().set_size_inches(12, 6)
     plt.title(title)
     plt.gcf().autofmt_xdate()
     plt.tight_layout()
@@ -564,7 +567,9 @@ def finalPlot(df, symptom_date, covid_date, recovery_date, detectionWindow, titl
                     color="orange", marker="<", markersize=20)
             plt.legend(markerscale=0.5)
 
-    ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
+    # ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
+    plt.xlabel('Data')
+    plt.ylabel('Frequência cardíaca em repouso')
     plt.title(title)
     plt.gcf().autofmt_xdate()
     plt.tight_layout()

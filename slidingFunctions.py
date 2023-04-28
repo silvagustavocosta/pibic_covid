@@ -549,7 +549,7 @@ def por(df):
     return porcT, porcP
 
 
-def finalPlot_quality(df, coluna, title, saveMode, participant, symptom_date, covid_date, detectionWindow, recovery_date):
+def finalPlot_quality(df, coluna, title, saveMode, participant, symptom_date, covid_date, detectionWindow, recovery_date, dir_path):
     """
         Plota os dados de qualidade baseados em scRHR
     """
@@ -586,15 +586,18 @@ def finalPlot_quality(df, coluna, title, saveMode, participant, symptom_date, co
                     color="orange", marker="<", markersize=20)
             plt.legend(markerscale=0.5)
 
+    plt.xlabel('Data')
+    plt.ylabel('Número de dados de frequência cardíaca na hora')
+
     ax.legend(bbox_to_anchor=(1, 1), loc='upper left')
     plt.title(title)
     plt.gcf().autofmt_xdate()
     plt.tight_layout()
 
     if saveMode == "on":
-        base_path = "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data"
+        base_path = dir_path
         figName = title + ".jpg"
-        dir_path = os.path.join(base_path, participant, figName)
+        dir_path = os.path.join(base_path, figName)
         plt.savefig(dir_path)
 
     plt.show()
@@ -609,19 +612,28 @@ def anomaly_frequency(df):
     # cálculo para o período saudável
     countVetores = len(df[(df['sick_ID'] == 0)])
     countAnomalys = len(df[(df['sick_ID'] == 0) & (df['anomaly'] == -1)])
-    freq_health = countAnomalys/countVetores
+    if countVetores == 0:
+        freq_health = nan
+    else:
+        freq_health = countAnomalys/countVetores
 
     # cálculo para o período pre-sintomatico
     countVetores = len(df[(df['sick_ID'] == 3)])
     countAnomalys = len(df[(df['sick_ID'] == 3) & (df['anomaly'] == -1)])
-    freq_pre = countAnomalys/countVetores
+    if countVetores == 0:
+        freq_pre = nan
+    else:
+        freq_pre = countAnomalys/countVetores
 
     # cálculo para o período sintomático
     countVetores = len(df[(df['sick_ID'] == 1)
                           | (df['sick_ID'] == 2)])
     countAnomalys = len(df[(df['sick_ID'] == 1) & (
         df['anomaly'] == -1)]) + len(df[(df['sick_ID'] == 2) & (df['anomaly'] == -1)])
-    freq_symp = countAnomalys/countVetores
+    if countVetores == 0:
+        freq_symp = nan
+    else:
+        freq_symp = countAnomalys/countVetores
 
     return freq_health, freq_pre, freq_symp
 

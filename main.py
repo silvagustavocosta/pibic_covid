@@ -153,7 +153,7 @@ def isolation_analysis(vetoresRHR, scRHR, sick_id, df_sick, participant, dateLis
 
     # ploting vetoresRHR, dataframe dos minutesRHR organizado em vetores
     Anomaly_Detection.ploting(time_min_mean, pre_symptom_date,
-                              symptom_date, covid_date, recovery_date, "VetoresRHR Hora", "heartrate", save_mode, participant, "vetorRHR", dir_path)
+                              symptom_date, covid_date, recovery_date, "Vetores de RHR dividios por hora", "heartrate", save_mode, participant, "vetorRHR", dir_path)
 
     detectionWindow = Anomaly_Detection.detection_window(
         participant, symptom_date, covid_date)
@@ -226,8 +226,10 @@ def main():
     mode = "solo"
     save_mode = "off"
 
+    # Supplementary_Table = pd.read_csv(
+    #     "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
     Supplementary_Table = pd.read_csv(
-        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
+        "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/One.csv")
 
     controle = pd.read_csv(
         "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/controle")
@@ -263,9 +265,17 @@ def main():
         scRHR = pd.read_csv(
             "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Data/" + participant + "/scRHR")
 
+        # se os dataframes estiverem vazios pula o código
+        if scRHR.empty:
+            continue
+        if minutesRHR.empty:
+            continue
+
         # getting timestamps from when the subject is sick:
         df_sick = pd.read_csv(
             "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/Sick_Values_01.txt")
+        # df_sick = pd.read_csv(
+        #     "/mnt/c/Users/silva/Desktop/Gustavo/Pibic/Input/One.csv")
 
         vetoresRHR, scRHR, sick_id, dateList, sick_HID = data_org(
             participant, minutesRHR, scRHR, df_sick)
